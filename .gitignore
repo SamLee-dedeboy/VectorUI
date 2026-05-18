@@ -1,0 +1,12 @@
+# dependencies
+node_modules
+
+# build output
+dist
+
+# TypeScript incremental build info
+*.tsbuildinfo
+
+# OS / editor cruft
+.DS_Store
+*.local

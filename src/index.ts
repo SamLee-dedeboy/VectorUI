@@ -1,0 +1,95 @@
+/**
+ * VectorUI public API barrel.
+ *
+ * Layer 1 (svg) and Layer 2 (layout) are exported for completeness, but
+ * applications normally consume only Layer 3 components.
+ */
+
+// Layer 3 — components
+export { VectorUIRoot } from "./components/VectorUIRoot";
+export type { VectorUIRootProps } from "./components/VectorUIRoot";
+export { Text } from "./components/Text";
+export type { TextProps, TextMeasurement, FlowAround } from "./components/Text";
+export { Frame } from "./components/Frame";
+export type {
+  FrameProps,
+  FrameSlotProps,
+  SlotSpec,
+  RegionSlot,
+  AnchorSlot,
+  HTMLOverlaySlot,
+  SlotAfter,
+  AnchorAlign,
+  ShapeGenerator,
+} from "./components/Frame";
+export { PathFlow } from "./components/PathFlow";
+export type { PathFlowProps } from "./components/PathFlow";
+export { Stack } from "./components/Stack";
+export type { StackProps } from "./components/Stack";
+
+export { TokenDefs } from "./components/TokenDefs";
+
+// Design tokens (consumed at Layer 3)
+export { tokens, colorVars, filterDefs } from "./tokens";
+export type {
+  TextStyle,
+  ColorToken,
+  SpaceToken,
+  TypeToken,
+  ShapeToken,
+  FilterToken,
+} from "./tokens";
+
+// Layer 1 — render primitives
+export { Group } from "./svg/Group";
+export type { GroupProps } from "./svg/Group";
+export { Path } from "./svg/Path";
+export type { PathProps } from "./svg/Path";
+export { TextLine } from "./svg/TextLine";
+export type { TextLineProps } from "./svg/TextLine";
+
+// Layer 2 — layout engine
+export {
+  useCoordinateScale,
+  layoutToPx,
+  pxToLayout,
+} from "./layout/coordinateScale";
+export type { CoordinateScale } from "./layout/coordinateScale";
+export { useSlot } from "./layout/slot";
+export type { SlotInfo } from "./layout/slot";
+export { arc, line, quadratic, distributeAlong } from "./layout/walkPath";
+export type {
+  Curve,
+  CurvePoint,
+  ArcSpec,
+  LineSpec,
+  QuadraticSpec,
+  Distribute,
+  DistributeOptions,
+} from "./layout/walkPath";
+export {
+  layoutParagraph,
+  layoutFlowParagraph,
+  getFontMetrics,
+  prepareCached,
+} from "./layout/measureText";
+export type {
+  MeasuredLine,
+  MeasuredParagraph,
+  MeasureOptions,
+  FlowParagraphOptions,
+  IntrusionAtPx,
+  FontMetrics,
+} from "./layout/measureText";
+export { useFontsReady } from "./layout/fonts";
+export { useMeasuredBounds, boundsEqual } from "./layout/measureBounds";
+export type { Bounds } from "./layout/measureBounds";
+export { usePrefersReducedMotion } from "./layout/motion";
+export { morphPath, tokenizePath } from "./layout/morphPath";
+export {
+  useViewportWidth,
+  useBreakpoint,
+  breakpointMorph,
+  defaultStops,
+} from "./layout/breakpoints";
+export type { BreakpointStops } from "./layout/breakpoints";
