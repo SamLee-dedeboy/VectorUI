@@ -26,6 +26,16 @@ export type CardProps = {
   /** Optional action button; omit for a card with no action. */
   actionLabel?: string;
   onAction?: () => void;
+  /** Card surface fill. */
+  surface?: string;
+  /** Title text color. */
+  titleFill?: string;
+  /** Body text color. */
+  bodyFill?: string;
+  /** Action button fill. */
+  accent?: string;
+  /** Action button label color. */
+  accentInk?: string;
 };
 
 export function Card({
@@ -35,6 +45,11 @@ export function Card({
   body,
   actionLabel,
   onAction,
+  surface = color.surface,
+  titleFill = color.ink,
+  bodyFill = color.inkMuted,
+  accent = color.accent,
+  accentInk = color.accentInk,
 }: CardProps) {
   const [hovered, setHovered] = useState(false);
   const morph = useTween(hovered ? 1 : 0);
@@ -54,7 +69,7 @@ export function Card({
           height: "content",
         },
       }}
-      fill={color.surface}
+      fill={surface}
       filter={filters.softShadow}
       title={title}
       role="region"
@@ -64,14 +79,16 @@ export function Card({
     >
       <Frame.Slot name="content">
         <Flow gap={space.md}>
-          <Text {...type.title} maxWidth="100%" fill={color.ink}>
+          <Text {...type.title} maxWidth="100%" fill={titleFill}>
             {title}
           </Text>
-          <Text {...type.body} maxWidth="100%" fill={color.inkMuted}>
+          <Text {...type.body} maxWidth="100%" fill={bodyFill}>
             {body}
           </Text>
           {actionLabel ? (
-            <Button onClick={onAction}>{actionLabel}</Button>
+            <Button onClick={onAction} fill={accent} color={accentInk}>
+              {actionLabel}
+            </Button>
           ) : null}
         </Flow>
       </Frame.Slot>

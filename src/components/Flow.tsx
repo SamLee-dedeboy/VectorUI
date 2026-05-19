@@ -75,6 +75,17 @@ export function Flow({
 
   return (
     <g transform={`translate(${x} ${y})`} {...gProps}>
+      {/* An invisible rect at the Flow's full layout size — including padding.
+          Padding is otherwise just an offset with no geometry, so a
+          getBBox-based parent (VectorUIRoot height="content", Frame.Slot)
+          would not see it and would clip the padded edges. */}
+      <rect
+        width={layout.width}
+        height={layout.height}
+        fill="none"
+        pointerEvents="none"
+        aria-hidden="true"
+      />
       {items.map((child, i) => (
         <g
           key={i}

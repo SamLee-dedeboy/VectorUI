@@ -26,10 +26,9 @@ export function App() {
   );
 }
 
-type DemoTab = "demo" | "code";
-
 function DemoView({ demo }: { demo: DemoEntry }) {
-  const [tab, setTab] = useState<DemoTab>("demo");
+  // When on, the source opens in a panel BESIDE the demo — both stay visible.
+  const [showCode, setShowCode] = useState(false);
   const Component = demo.Component!;
   return (
     <article>
@@ -39,26 +38,27 @@ function DemoView({ demo }: { demo: DemoEntry }) {
       <h1>{demo.title}</h1>
       <p className="proves">{demo.proves}</p>
 
-      <div className="view-tabs" role="tablist" aria-label="Demo or source">
-        {(["demo", "code"] as const).map((id) => (
-          <button
-            key={id}
-            type="button"
-            role="tab"
-            aria-selected={tab === id}
-            className={tab === id ? "view-tab active" : "view-tab"}
-            onClick={() => setTab(id)}
-          >
-            {id === "demo" ? "Demo" : "Code"}
-          </button>
-        ))}
+      <div className="view-toolbar">
+        <button
+          type="button"
+          className={showCode ? "code-toggle active" : "code-toggle"}
+          aria-pressed={showCode}
+          onClick={() => setShowCode((s) => !s)}
+        >
+          {showCode ? "Hide code" : "Show code"}
+        </button>
       </div>
 
-      {tab === "demo" ? (
-        <Component />
-      ) : (
-        <CodeView sources={demo.sources ?? []} />
-      )}
+      <div className={showCode ? "demo-split is-split" : "demo-split"}>
+        <div className="demo-pane">
+          <Component />
+        </div>
+        {showCode ? (
+          <div className="code-pane">
+            <CodeView sources={demo.sources ?? []} />
+          </div>
+        ) : null}
+      </div>
     </article>
   );
 }

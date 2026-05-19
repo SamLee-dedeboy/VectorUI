@@ -430,6 +430,12 @@ Honest list — useful when assessing the API:
   measure rendered bounds, so layout settles one frame after first paint.
   `VectorUIRoot` paints a placeholder frame first; there is no flash in
   practice, but layout is not synchronous.
+- **`getBBox` ignores filter ink.** Auto-sizing measures geometry, not the
+  blur/spread of a `filter` (e.g. a drop shadow). `Flow` reserves its own
+  `padding` geometrically, so a shadowed shape inside a padded `Flow` is not
+  clipped — but a filtered element placed flush at the edge of a
+  `height="content"` scene, with no surrounding padding, can have its shadow
+  cut. Keep a little padding around shadowed shapes.
 - **`Text` takes a plain string only.** No inline spans, bold runs, or links
   within a paragraph. Mixed formatting means multiple `<Text>` elements.
 - **No animation primitive.** No `useTween` / transition component is exported;

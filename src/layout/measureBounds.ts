@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, type RefObject } from "react";
+import { useFontsReady } from "./fonts";
 
 /**
  * Layer 2 — rendered-bounds measurement.
@@ -30,6 +31,11 @@ export function useMeasuredBounds<T extends SVGGraphicsElement>(
   onBounds: (bounds: Bounds) => void,
 ): RefObject<T | null> {
   const ref = useRef<T>(null);
+  // A measured child can re-render *internally* — most commonly when the web
+  // font loads and its text re-wraps — without this wrapper re-rendering.
+  // Subscribing to font readiness forces a fresh getBBox once that happens,
+  // so the new size is never missed.
+  useFontsReady();
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;

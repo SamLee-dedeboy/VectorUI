@@ -61,6 +61,8 @@ export type Section = {
 
 export type SettingsPanelProps = {
   sections: Section[];
+  /** Accent color — active tab, toggle-on track, illustration spark. */
+  accent?: string;
 };
 
 function initialToggles(sections: Section[]): Record<string, boolean> {
@@ -79,7 +81,10 @@ function initialValues(sections: Section[]): Record<string, number> {
   return state;
 }
 
-export function SettingsPanel({ sections }: SettingsPanelProps) {
+export function SettingsPanel({
+  sections,
+  accent = color.accent,
+}: SettingsPanelProps) {
   const width = useViewportWidth();
   const [activeTab, setActiveTab] = useState(0);
   const [toggles, setToggles] = useState(() => initialToggles(sections));
@@ -123,6 +128,7 @@ export function SettingsPanel({ sections }: SettingsPanelProps) {
               contentW={contentW}
               activeTab={activeTab}
               onSelect={setActiveTab}
+              accent={accent}
             />
             <Path
               d={`M 0 0 L ${contentW} 0`}
@@ -134,6 +140,7 @@ export function SettingsPanel({ sections }: SettingsPanelProps) {
               contentW={contentW}
               eyebrow={section.eyebrow}
               body={section.body}
+              accent={accent}
             />
             <Flow gap={ROW_GAP}>
               {section.rows.map((row) => (
@@ -141,6 +148,7 @@ export function SettingsPanel({ sections }: SettingsPanelProps) {
                   key={row.id}
                   width={contentW}
                   row={row}
+                  accent={accent}
                   toggleOn={toggles[row.id] ?? false}
                   valueIndex={values[row.id] ?? 0}
                   onActivate={() =>
@@ -165,11 +173,13 @@ function TabBar({
   contentW,
   activeTab,
   onSelect,
+  accent,
 }: {
   sections: Section[];
   contentW: number;
   activeTab: number;
   onSelect: (i: number) => void;
+  accent: string;
 }) {
   // A gentle arch — a quadratic with its control point lifted.
   const curve = quadratic({
@@ -191,6 +201,7 @@ function TabBar({
           label={s.tab}
           active={i === activeTab}
           onClick={() => onSelect(i)}
+          accent={accent}
         />
       ))}
     </PathFlow>
@@ -202,10 +213,12 @@ function Tab({
   label,
   active,
   onClick,
+  accent,
 }: {
   label: string;
   active: boolean;
   onClick: () => void;
+  accent: string;
 }) {
   return (
     <Pill
@@ -217,7 +230,7 @@ function Tab({
       textStyle={type.label}
       height={TAB_H}
       paddingX={18}
-      fill={active ? color.accent : color.surfaceSunken}
+      fill={active ? accent : color.surfaceSunken}
       textFill={active ? color.accentInk : color.inkMuted}
     >
       {label}
@@ -231,10 +244,12 @@ function BodyBlock({
   contentW,
   eyebrow,
   body,
+  accent,
 }: {
   contentW: number;
   eyebrow: string;
   body: string;
+  accent: string;
 }) {
   const blob = useMemo(() => cornerBlob({ width: 92, height: 100 }), []);
   const flowAround = useMemo<FlowAround>(
@@ -251,7 +266,7 @@ function BodyBlock({
         <Path d={blob.path} fill={color.accentSoft} />
         <Path
           d="M 32 28 L 37 43 L 52 48 L 37 53 L 32 68 L 27 53 L 12 48 L 27 43 Z"
-          fill={color.accent}
+          fill={accent}
         />
         <Text
           {...type.body}
@@ -271,12 +286,14 @@ function BodyBlock({
 function SettingRow({
   width,
   row,
+  accent,
   toggleOn,
   valueIndex,
   onActivate,
 }: {
   width: number;
   row: RowDef;
+  accent: string;
   toggleOn: boolean;
   valueIndex: number;
   onActivate: () => void;
@@ -322,7 +339,7 @@ function SettingRow({
       </Frame.Slot>
       <Frame.Slot name="control">
         {row.kind === "toggle" ? (
-          <Toggle on={toggleOn} />
+          <Toggle on={toggleOn} accent={accent} />
         ) : (
           <ValueChevron value={row.options[valueIndex]} />
         )}
@@ -332,7 +349,7 @@ function SettingRow({
 }
 
 /** An on/off toggle with a knob that animates between states. */
-function Toggle({ on }: { on: boolean }) {
+function Toggle({ on, accent }: { on: boolean; accent: string }) {
   const w = 46;
   const h = 26;
   const knobR = 9;
@@ -340,7 +357,7 @@ function Toggle({ on }: { on: boolean }) {
   const cx = h / 2 + t * (w - h);
   return (
     <g role="switch" aria-checked={on}>
-      <Path d={shapes.pill(w, h)} fill={on ? color.accent : color.line} />
+      <Path d={shapes.pill(w, h)} fill={on ? accent : color.line} />
       <circle cx={cx} cy={h / 2} r={knobR} fill={color.surface} />
     </g>
   );

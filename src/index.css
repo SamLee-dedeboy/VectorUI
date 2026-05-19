@@ -120,32 +120,53 @@ h2 {
   opacity: 0.72;
 }
 
-/* Demo / Code tab switcher */
-.view-tabs {
+/* Demo + side-by-side code panel */
+.view-toolbar {
   display: flex;
-  gap: 2px;
+  margin: 16px 0;
+  padding-bottom: 14px;
   border-bottom: 1px solid var(--line);
-  margin: 16px 0 20px;
 }
-.view-tab {
+.code-toggle {
   appearance: none;
-  background: none;
-  border: none;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
-  padding: 8px 16px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 6px 14px;
   font: inherit;
-  font-size: 14px;
-  color: var(--muted);
+  font-size: 13px;
+  color: var(--ink);
   cursor: pointer;
 }
-.view-tab:hover {
-  color: var(--ink);
+.code-toggle:hover {
+  border-color: var(--accent);
 }
-.view-tab.active {
-  color: var(--ink);
+.code-toggle.active {
+  border-color: var(--accent);
+  color: var(--accent);
   font-weight: 600;
-  border-bottom-color: var(--accent);
+}
+.demo-split {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 28px;
+  align-items: flex-start;
+}
+/* When the code panel is open, break out of the centered column so the demo
+   and the code each get room; capped and re-centered, with min gutters. */
+.demo-split.is-split {
+  margin-inline: calc(50% - 50vw);
+  padding-inline: max(32px, calc(50vw - 700px));
+}
+.demo-pane {
+  flex: 1 1 380px;
+  min-width: 0;
+}
+.code-pane {
+  flex: 1 1 380px;
+  min-width: 0;
+  position: sticky;
+  top: 24px;
 }
 
 /* Code tab */
@@ -203,4 +224,15 @@ h2 {
 .code-text {
   flex: 1 1 auto;
   padding-right: 16px;
+}
+
+/* Label above each configured version of a demo component */
+.variant-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  margin: 28px 0 8px;
+}
+.variant-label code {
+  font-weight: 600;
 }

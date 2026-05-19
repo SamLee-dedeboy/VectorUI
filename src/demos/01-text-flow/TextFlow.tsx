@@ -19,6 +19,10 @@ export type TextFlowProps = {
   columnWidth: number;
   /** Stroke the float's silhouette (useful for inspecting the wrap). */
   showSilhouette?: boolean;
+  /** Fill of the floated shape. */
+  floatFill?: string;
+  /** Body text color. */
+  textFill?: string;
 };
 
 export function TextFlow({
@@ -26,6 +30,8 @@ export function TextFlow({
   float,
   columnWidth,
   showSilhouette = false,
+  floatFill = tokens.color.accentSoft,
+  textFill = tokens.color.ink,
 }: TextFlowProps) {
   const flowAround = useMemo<FlowAround>(
     () => ({ intrusionAt: float.intrusionAt, gap: 24 }),
@@ -37,7 +43,7 @@ export function TextFlow({
       {/* The float. Decorative — aria-hidden by default via <Path>. */}
       <Path
         d={float.path}
-        fill={tokens.color.accentSoft}
+        fill={floatFill}
         stroke={showSilhouette ? tokens.color.accent : "none"}
         strokeWidth={showSilhouette ? 2 : 0}
       />
@@ -46,7 +52,7 @@ export function TextFlow({
         lineHeight={26}
         maxWidth={columnWidth}
         flowAround={flowAround}
-        fill={tokens.color.ink}
+        fill={textFill}
       >
         {text}
       </Text>

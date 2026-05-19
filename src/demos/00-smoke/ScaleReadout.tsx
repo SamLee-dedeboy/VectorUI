@@ -7,9 +7,13 @@ import { useCoordinateScale } from "../../layout/coordinateScale";
  */
 export type ScaleReadoutProps = {
   fill?: string;
+  fontSize?: number;
 };
 
-export function ScaleReadout({ fill = "#0b3d2e" }: ScaleReadoutProps) {
+export function ScaleReadout({
+  fill = "#0b3d2e",
+  fontSize = 16,
+}: ScaleReadoutProps) {
   const { scale, viewBoxWidth, viewBoxHeight } = useCoordinateScale();
   return (
     <text
@@ -17,7 +21,7 @@ export function ScaleReadout({ fill = "#0b3d2e" }: ScaleReadoutProps) {
       y={viewBoxHeight / 2 + 6}
       textAnchor="middle"
       fontFamily="ui-monospace, monospace"
-      fontSize={16}
+      fontSize={fontSize}
       fill={fill}
     >
       scale = {scale.toFixed(4)} px / layout unit

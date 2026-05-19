@@ -24,6 +24,12 @@ export type RadialMenuProps = {
   /** Scene size, in layout units. */
   width?: number;
   height?: number;
+  /** Center hub fill. */
+  hubFill?: string;
+  /** Item chip fill. */
+  itemFill?: string;
+  /** Icon stroke color. */
+  iconColor?: string;
 };
 
 const deg = (d: number) => (d * Math.PI) / 180;
@@ -38,6 +44,9 @@ export function RadialMenu({
   orient = "along",
   width = 540,
   height = 400,
+  hubFill = tokens.color.accent,
+  itemFill = tokens.color.surface,
+  iconColor = tokens.color.ink,
 }: RadialMenuProps) {
   const hub: CurvePoint = { x: width / 2, y: height * 0.75 };
   const radius = height * 0.425;
@@ -83,7 +92,7 @@ export function RadialMenu({
 
       {/* The hub fades in with the arc. */}
       <g aria-hidden="true" opacity={t}>
-        <circle cx={hub.x} cy={hub.y} r={36} fill={tokens.color.accent} />
+        <circle cx={hub.x} cy={hub.y} r={36} fill={hubFill} />
         {[-10, 0, 10].map((dx) => (
           <circle
             key={dx}
@@ -103,7 +112,12 @@ export function RadialMenu({
         aria-label="Radial menu"
       >
         {items.map((name) => (
-          <MenuItem key={name} name={name} />
+          <MenuItem
+            key={name}
+            name={name}
+            fill={itemFill}
+            iconColor={iconColor}
+          />
         ))}
       </PathFlow>
     </>
@@ -111,16 +125,24 @@ export function RadialMenu({
 }
 
 /** One menu item: a circular chip with a centered icon. */
-function MenuItem({ name }: { name: IconName }) {
+function MenuItem({
+  name,
+  fill,
+  iconColor,
+}: {
+  name: IconName;
+  fill: string;
+  iconColor: string;
+}) {
   return (
     <g role="menuitem" aria-label={name} style={{ cursor: "pointer" }}>
       <circle
         r={24}
-        fill={tokens.color.surface}
+        fill={fill}
         stroke={tokens.color.line}
         strokeWidth={1.5}
       />
-      <Icon name={name} size={25} color={tokens.color.ink} />
+      <Icon name={name} size={25} color={iconColor} />
     </g>
   );
 }

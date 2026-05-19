@@ -27,6 +27,12 @@ export type MorphCardProps = {
   threshold?: number;
   /** Viewport-width band (px) over which the morph eases. */
   band?: number;
+  /** Card surface fill. */
+  surface?: string;
+  /** Title text color. */
+  titleFill?: string;
+  /** Caption text color. */
+  captionFill?: string;
 };
 
 export function MorphCard({
@@ -36,6 +42,9 @@ export function MorphCard({
   height = 200,
   threshold = 600,
   band = 150,
+  surface = tokens.color.surface,
+  titleFill = tokens.color.ink,
+  captionFill = tokens.color.inkMuted,
 }: MorphCardProps) {
   const viewportWidth = useViewportWidth();
   const reduced = usePrefersReducedMotion();
@@ -61,7 +70,7 @@ export function MorphCard({
           height: 56,
         },
       }}
-      fill={tokens.color.surface}
+      fill={surface}
       filter={tokens.filters.softShadow}
       title={title}
       role="region"
@@ -71,14 +80,10 @@ export function MorphCard({
         {/* A Flow stacks the caption below the title by measured bounds —
             no scale-aware y-offset, even as the viewBox scales. */}
         <Flow gap={tokens.space.xs}>
-          <Text {...tokens.type.title} maxWidth="100%" fill={tokens.color.ink}>
+          <Text {...tokens.type.title} maxWidth="100%" fill={titleFill}>
             {title}
           </Text>
-          <Text
-            {...tokens.type.caption}
-            maxWidth="100%"
-            fill={tokens.color.inkMuted}
-          >
+          <Text {...tokens.type.caption} maxWidth="100%" fill={captionFill}>
             {caption}
           </Text>
         </Flow>
