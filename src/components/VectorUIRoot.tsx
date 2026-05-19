@@ -33,6 +33,15 @@ import { TokenDefs } from "./TokenDefs";
  * scene whose height is data-driven needs no `onMeasure`/`onLayout` callback
  * dance and no guessed fallback height.
  */
+/**
+ * A container narrower than this is treated as "not laid out yet" — the
+ * element is detached, display:none, or in a collapsed flex track. The 1:1
+ * placeholder scale is kept rather than deriving a degenerate one: a sub-pixel
+ * `scale` would wrap text to sub-pixel columns and explode a height="content"
+ * viewBox to millions of units.
+ */
+const MIN_REAL_WIDTH = 16;
+
 export type VectorUIRootProps = Omit<
   SVGProps<SVGSVGElement>,
   "viewBox" | "width" | "height"
@@ -72,13 +81,10 @@ export function VectorUIRoot({
   }, []);
 
   const isAuto = width === "auto";
+  const measured = pixelWidth >= MIN_REAL_WIDTH;
   // In "auto" mode the viewBox width equals the pixel width, so scale is 1.
-  const viewBoxWidth = isAuto ? Math.max(pixelWidth, 1) : width;
-  const scale = isAuto
-    ? 1
-    : pixelWidth > 0
-      ? pixelWidth / width
-      : 1;
+  const viewBoxWidth = isAuto ? Math.max(pixelWidth, MIN_REAL_WIDTH) : width;
+  const scale = isAuto ? 1 : measured ? pixelWidth / width : 1;
 
   // When height is "content", the viewBox height tracks the rendered content.
   const isContentHeight = height === "content";

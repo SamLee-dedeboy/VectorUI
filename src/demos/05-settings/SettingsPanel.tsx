@@ -10,6 +10,7 @@ import { useViewportWidth } from "../../layout/breakpoints";
 import { tokens } from "../../tokens";
 import { useTween } from "../02-card/useTween";
 import { cornerBlob } from "../01-text-flow/cornerBlob";
+import { chamferedRect } from "./rowShape";
 
 /**
  * `SettingsPanel` — a reusable, data-driven settings screen.
@@ -300,7 +301,7 @@ function SettingRow({
 }) {
   return (
     <Frame
-      shape={shapes.rectRounded}
+      shape={chamferedRect}
       width={width}
       height={ROW_H}
       slots={{

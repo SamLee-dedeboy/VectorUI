@@ -10,9 +10,9 @@ import { tokens } from "../../tokens";
 /**
  * `MorphCard` — a reusable card whose shape responds to the viewport width.
  *
- * As the real pixel width crosses `threshold`, the outline morphs from a blob
- * to a sharp rounded rectangle, eased across `band`. Must be rendered under a
- * `VectorUIRoot` (it reads `useViewportWidth`).
+ * As the real pixel width crosses `threshold`, the outline morphs from a
+ * pointed leaf to a sharp rounded rectangle, eased across `band`. Must be
+ * rendered under a `VectorUIRoot` (it reads `useViewportWidth`).
  */
 
 const smoothstep = (t: number) => t * t * (3 - 2 * t);
@@ -54,7 +54,7 @@ export function MorphCard({
   const t = reduced ? (raw < 0.5 ? 0 : 1) : smoothstep(raw);
 
   const shape = (w: number, h: number) =>
-    morphPath(tokens.shapes.blob(w, h, 0.25), tokens.shapes.sharp(w, h), t);
+    morphPath(tokens.shapes.leaf(w, h), tokens.shapes.sharp(w, h), t);
 
   return (
     <Frame

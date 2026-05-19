@@ -1,15 +1,18 @@
 import { PathFlow } from "../../components/PathFlow";
+import { Path } from "../../svg/Path";
 import { quadratic, type CurvePoint } from "../../layout/walkPath";
 import { tokens } from "../../tokens";
 import { useTween } from "../02-card/useTween";
 import { Icon, type IconName } from "./Icon";
+import { hexagon, cog } from "./chrome";
 
 /**
  * `RadialMenu` — a reusable menu that distributes items along a curve.
  *
  * `mode` picks an arc (a fan around a hub) or a line (a row); switching is
  * animated — the curve is one quadratic Bézier with its control points tweened
- * between the two configurations. Items, mode and orientation are props.
+ * between the two configurations. Items, mode and orientation are props. The
+ * item chips are hexagons and the hub a cog — both plain generated paths.
  */
 
 export type RadialMenuMode = "arc" | "line";
@@ -90,17 +93,15 @@ export function RadialMenu({
         aria-hidden="true"
       />
 
-      {/* The hub fades in with the arc. */}
-      <g aria-hidden="true" opacity={t}>
-        <circle cx={hub.x} cy={hub.y} r={36} fill={hubFill} />
+      {/* The hub — a cog path — fades in with the arc. */}
+      <g
+        aria-hidden="true"
+        opacity={t}
+        transform={`translate(${hub.x} ${hub.y})`}
+      >
+        <Path d={cog(34)} fill={hubFill} />
         {[-10, 0, 10].map((dx) => (
-          <circle
-            key={dx}
-            cx={hub.x + dx}
-            cy={hub.y}
-            r={3}
-            fill={tokens.color.accentInk}
-          />
+          <circle key={dx} cx={dx} cy={0} r={3} fill={tokens.color.accentInk} />
         ))}
       </g>
 
@@ -124,7 +125,7 @@ export function RadialMenu({
   );
 }
 
-/** One menu item: a circular chip with a centered icon. */
+/** One menu item: a hexagonal chip with a centered icon. */
 function MenuItem({
   name,
   fill,
@@ -136,13 +137,13 @@ function MenuItem({
 }) {
   return (
     <g role="menuitem" aria-label={name} style={{ cursor: "pointer" }}>
-      <circle
-        r={24}
+      <Path
+        d={hexagon(27)}
         fill={fill}
         stroke={tokens.color.line}
         strokeWidth={1.5}
       />
-      <Icon name={name} size={25} color={iconColor} />
+      <Icon name={name} size={24} color={iconColor} />
     </g>
   );
 }

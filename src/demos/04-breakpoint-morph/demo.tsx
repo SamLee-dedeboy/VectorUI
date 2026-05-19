@@ -53,7 +53,7 @@ export function Demo() {
         <g transform={`translate(${(VIEW_W - 430) / 2} 78)`}>
           <MorphCard
             title="Threshold 600"
-            caption="Below 600px this blob squares off."
+            caption="Below 600px this leaf squares off."
             width={430}
             threshold={600}
           />
@@ -72,7 +72,7 @@ export function Demo() {
         <g transform={`translate(${(VIEW_W - 360) / 2} 96)`}>
           <MorphCard
             title="Threshold 460"
-            caption="This one holds its blob longer."
+            caption="This one holds its leaf longer."
             width={360}
             height={170}
             threshold={460}

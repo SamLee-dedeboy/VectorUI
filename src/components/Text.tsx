@@ -10,11 +10,14 @@ import { layoutParagraph, layoutFlowParagraph } from "../layout/measureText";
  *
  * `intrusionAt` answers, in LAYOUT UNITS, how far the float reaches in from
  * the left edge of the text column over a vertical band — with coordinates
- * relative to this Text block's own top-left. The Text component converts to
- * pixel space internally.
+ * relative to this Text block's own top-left. `rightIntrusionAt` does the same
+ * from the right edge, for a shape (such as an archway) that wraps text on
+ * both sides. The Text component converts to pixel space internally.
  */
 export type FlowAround = {
   intrusionAt: (yTopLayout: number, yBottomLayout: number) => number;
+  /** Right-edge intrusion, for a shape that wraps text on both sides. */
+  rightIntrusionAt?: (yTopLayout: number, yBottomLayout: number) => number;
   /** Gap between the float's edge and the text, in layout units. */
   gap?: number;
 };
@@ -114,9 +117,16 @@ export function Text({
           lineHeightPx: lineHeight,
           letterSpacingPx: letterSpacing,
           gapPx: gap * scale,
-          // Convert the float's layout-unit profile into pixel space.
+          // Convert the float's layout-unit profile(s) into pixel space.
           intrusionAtPx: (yTopPx, yBottomPx) =>
             flowAround.intrusionAt(yTopPx / scale, yBottomPx / scale) * scale,
+          rightIntrusionAtPx: flowAround.rightIntrusionAt
+            ? (yTopPx, yBottomPx) =>
+                flowAround.rightIntrusionAt!(
+                  yTopPx / scale,
+                  yBottomPx / scale,
+                ) * scale
+            : undefined,
         });
       }
       return layoutParagraph({
