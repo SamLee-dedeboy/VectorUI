@@ -54,10 +54,13 @@ npm run build    # type-check + production build
 npm test         # vitest (layout/measurement pure functions)
 ```
 
-Open the dev server and pick a demo. The **Text fidelity — risk gate** demo is
-the step-3 verification: it renders the same paragraph as a native HTML `<p>`
-and as a VectorUI `<Text>` at an identical width and font, side by side and as
-an overlay.
+Open the dev server and pick a demo. Each demo page has a **Demo / Code**
+tab — "Code" shows the exact source that produced the demo (imported verbatim
+via Vite `?raw`, highlighted), so the running result and the code that made it
+sit side by side. The **Text fidelity — risk gate** demo is the step-3
+verification: it renders the same paragraph as a native HTML `<p>` and as a
+VectorUI `<Text>` at an identical width and font, side by side and as an
+overlay.
 
 ## Architecture
 
