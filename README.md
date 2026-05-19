@@ -1,7 +1,11 @@
 # VectorUI
 
 A UI component model rendered entirely in SVG — shapes, not boxes, as the
-primary layout container. See [SPEC.md](./SPEC.md) for the full design.
+primary layout container.
+
+📖 **[Developer Guide](./docs/guide.md)** — the reference for building with
+VectorUI: the coordinate model, every component, layout, tokens, hooks,
+recipes, and known limitations. [SPEC.md](./SPEC.md) is the original design.
 
 ## Status — Phase 1 (feasibility prototype) complete
 
@@ -39,11 +43,32 @@ were passed, and all five §11 demos are live.
 - **`VectorUIRoot` `width="auto"`** — opts a scene out of uniform scaling so it
   reflows to the real width (`scale` stays 1) instead of shrinking. Demo 5 uses
   it; this is what stops text colliding at narrow widths.
-- **`Stack` + unified measurement** — a vertical-flow primitive that places
-  children by their *rendered* bounds (`getBBox` via `useMeasuredBounds`), the
-  one mechanism `Frame.Slot` and `PathFlow` also use. Demo 5's page is a single
-  `Stack`, so the row list always clears the body's illustration even when that
-  shape is taller than the text it wraps.
+- **Unified measurement** — `useMeasuredBounds` (`getBBox`) is the one
+  rendered-bounds primitive `Frame.Slot`, `Flow` and `PathFlow` all build on,
+  so a layout always clears a child taller than expected.
+
+## Phase 2 — developer-experience refactor
+
+A DX audit of the demo (consumer) code found the friction concentrated in
+coordinate-model leaks, a measure/auto-size callback dance, and triplicated
+plumbing. Phase 2 addressed it:
+
+- **`Flow`** — the linear-layout primitive (replaces `Stack`): `direction`
+  (column/row), `gap`, `padding`, cross-axis `align`. Children are placed by
+  their rendered bounds, so `padding` and `align` retire the hand-computed
+  `OUTER + PAD` and `-w / 2` arithmetic.
+- **`VectorUIRoot height="content"`** — the viewBox sizes itself to the
+  rendered content, so a scene needs no `onMeasure`/`onLayout` callback and no
+  guessed fallback height.
+- **`Pill`** + **`useNaturalTextWidth`** — a label shrink-wrapped in a pill;
+  the natural-width hook returns layout units, so consumer code sizing a shape
+  to text never touches `scale`. `Button` and the settings tabs are now both
+  `Pill`.
+- **`useChildBounds`** — the shared child-bounds aggregation `Flow` and
+  `PathFlow` build on, on top of `useMeasuredBounds`.
+
+The result: across the five demos, zero `/ scale` in consumer code, zero
+guessed fallback heights, zero `onMeasure`/`onLayout` wiring.
 
 ## Run
 
@@ -69,19 +94,13 @@ Three layers (SPEC §4), strictly bottom-up — Layer 1 and 2 never import token
 | Layer | Path | Role |
 |------|------|------|
 | 1 — render primitives | `src/svg/` | Thin SVG wrappers: `Group`, `Path`, `TextLine`. |
-| 2 — layout engine | `src/layout/` | Pure functions + hooks: coordinate scale, pretext text measurement, flow-around, arc-length curves, path morphing, breakpoints, rendered-bounds measurement. |
-| 3 — components | `src/components/` | `VectorUIRoot`, `Text`, `Frame`, `PathFlow`, `Stack`, `TokenDefs`. |
+| 2 — layout engine | `src/layout/` | Pure functions + hooks: coordinate scale, pretext text measurement, flow-around, arc-length curves, path morphing, breakpoints, rendered-bounds measurement, flow placement. |
+| 3 — components | `src/components/` | `VectorUIRoot`, `Text`, `Frame`, `PathFlow`, `Flow`, `Pill`, `TokenDefs`. |
 | tokens | `src/tokens/` | Design tokens — consumed at Layer 3 only. |
 
 Demos live in `src/demos/` (see [its README](src/demos/README.md)), one route
 each via a tiny hash router (`src/router.tsx`). Pure layout/shape functions are
 unit-tested under `tests/` (`npm test`).
 
-## Next phase
-
-Phase 1 proved the model is feasible. The next phase assesses **developer
-experience** — what it actually feels like to build UI with these primitives —
-and looks for improvements: API ergonomics, the slot/stack composition story,
-escape hatches, and where the two-coordinate model still leaks. The deferred
-items in SPEC §16 (Figma pipeline, full WCAG, HTML-overlay inputs, theming UI,
-performance) remain out of scope until that assessment is done.
+The deferred items in SPEC §16 (Figma pipeline, full WCAG, HTML-overlay inputs,
+theming UI, performance) remain out of scope.
