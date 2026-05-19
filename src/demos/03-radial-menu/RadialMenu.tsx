@@ -1,5 +1,3 @@
-import { useState } from "react";
-import { VectorUIRoot } from "../../components/VectorUIRoot";
 import { PathFlow } from "../../components/PathFlow";
 import { quadratic, type CurvePoint } from "../../layout/walkPath";
 import { tokens } from "../../tokens";
@@ -7,137 +5,108 @@ import { useTween } from "../02-card/useTween";
 import { Icon, type IconName } from "./Icon";
 
 /**
- * Demo 3 — radial menu (SPEC §11).
+ * `RadialMenu` — a reusable menu that distributes items along a curve.
  *
- * Six items distributed along a curve and rotated to its tangent. Switching
- * between "arc" and "line" animates: the curve is a quadratic Bézier whose
- * three control points are tweened between a straight-line configuration and
- * an arched one, so the items slide and rotate smoothly between the two.
- *
- * Proves: `PathFlow`, arc-length distribution, tangent rotation.
+ * `mode` picks an arc (a fan around a hub) or a line (a row); switching is
+ * animated — the curve is one quadratic Bézier with its control points tweened
+ * between the two configurations. Items, mode and orientation are props.
  */
 
-const ITEMS: IconName[] = ["home", "search", "heart", "star", "bell", "user"];
+export type RadialMenuMode = "arc" | "line";
 
-const ROOT_W = 540;
-const ROOT_H = 400;
-const HUB: CurvePoint = { x: 270, y: 300 };
-const RADIUS = 170;
-
-const deg = (d: number) => (d * Math.PI) / 180;
-const onCircle = (a: number): CurvePoint => ({
-  x: HUB.x + RADIUS * Math.cos(a),
-  y: HUB.y + RADIUS * Math.sin(a),
-});
-const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
-const lerpPt = (a: CurvePoint, b: CurvePoint, t: number): CurvePoint => ({
-  x: lerp(a.x, b.x, t),
-  y: lerp(a.y, b.y, t),
-});
-
-// Arc configuration — a fan centered straight up, spread ±72°.
-const ARC_START = onCircle(deg(-162));
-const ARC_END = onCircle(deg(-18));
-const ARC_MID = onCircle(deg(-90));
-// Control point that makes a quadratic pass through the arc's midpoint.
-const ARC_CTRL: CurvePoint = {
-  x: 2 * ARC_MID.x - (ARC_START.x + ARC_END.x) / 2,
-  y: 2 * ARC_MID.y - (ARC_START.y + ARC_END.y) / 2,
+export type RadialMenuProps = {
+  /** Icons to place along the curve. */
+  items: IconName[];
+  /** "arc" fans the items around a hub; "line" lays them in a row. Animated. */
+  mode: RadialMenuMode;
+  /** Rotate each item to the curve tangent, or keep it upright. */
+  orient?: "along" | "upright";
+  /** Scene size, in layout units. */
+  width?: number;
+  height?: number;
 };
 
-// Line configuration — control at the midpoint makes the quadratic straight.
-const LINE_Y = 150;
-const LINE_START: CurvePoint = { x: 70, y: LINE_Y };
-const LINE_END: CurvePoint = { x: ROOT_W - 70, y: LINE_Y };
-const LINE_CTRL: CurvePoint = { x: ROOT_W / 2, y: LINE_Y };
+const deg = (d: number) => (d * Math.PI) / 180;
+const lerpPt = (a: CurvePoint, b: CurvePoint, t: number): CurvePoint => ({
+  x: a.x + (b.x - a.x) * t,
+  y: a.y + (b.y - a.y) * t,
+});
 
-type Mode = "arc" | "line";
-
-export function RadialMenu() {
-  const [mode, setMode] = useState<Mode>("arc");
-  const [orient, setOrient] = useState<"along" | "upright">("along");
+export function RadialMenu({
+  items,
+  mode,
+  orient = "along",
+  width = 540,
+  height = 400,
+}: RadialMenuProps) {
+  const hub: CurvePoint = { x: width / 2, y: height * 0.75 };
+  const radius = height * 0.425;
 
   // t: 0 = line, 1 = arc. Tweened so the switch animates.
   const t = useTween(mode === "arc" ? 1 : 0, 380);
 
+  const onCircle = (a: number): CurvePoint => ({
+    x: hub.x + radius * Math.cos(a),
+    y: hub.y + radius * Math.sin(a),
+  });
+  // Arc — a fan centered straight up, spread ±72°.
+  const arcStart = onCircle(deg(-162));
+  const arcEnd = onCircle(deg(-18));
+  const arcMid = onCircle(deg(-90));
+  const arcCtrl: CurvePoint = {
+    x: 2 * arcMid.x - (arcStart.x + arcEnd.x) / 2,
+    y: 2 * arcMid.y - (arcStart.y + arcEnd.y) / 2,
+  };
+  // Line — control at the midpoint makes the quadratic straight.
+  const lineY = height * 0.375;
+  const lineStart: CurvePoint = { x: 70, y: lineY };
+  const lineEnd: CurvePoint = { x: width - 70, y: lineY };
+  const lineCtrl: CurvePoint = { x: width / 2, y: lineY };
+
   const curve = quadratic({
-    p0: lerpPt(LINE_START, ARC_START, t),
-    control: lerpPt(LINE_CTRL, ARC_CTRL, t),
-    p1: lerpPt(LINE_END, ARC_END, t),
+    p0: lerpPt(lineStart, arcStart, t),
+    control: lerpPt(lineCtrl, arcCtrl, t),
+    p1: lerpPt(lineEnd, arcEnd, t),
   });
 
   return (
-    <div>
-      <p style={{ color: "#555", maxWidth: 640 }}>
-        Six items placed along a curve and rotated to its tangent. Switch the
-        curve and watch them animate — the line and the arc are the same
-        quadratic with its control points tweened.
-      </p>
+    <>
+      {/* The curve itself, drawn faintly as a guide. */}
+      <path
+        d={curve.toPathData()}
+        fill="none"
+        stroke={tokens.color.line}
+        strokeWidth={1.5}
+        strokeDasharray="3 6"
+        aria-hidden="true"
+      />
 
-      <div style={{ display: "flex", gap: 20, padding: "8px 0 16px" }}>
-        <label>
-          Curve{" "}
-          <select value={mode} onChange={(e) => setMode(e.target.value as Mode)}>
-            <option value="arc">Arc (radial menu)</option>
-            <option value="line">Line (flex row)</option>
-          </select>
-        </label>
-        <label>
-          Orient{" "}
-          <select
-            value={orient}
-            onChange={(e) =>
-              setOrient(e.target.value as "along" | "upright")
-            }
-          >
-            <option value="along">Along (tangent)</option>
-            <option value="upright">Upright</option>
-          </select>
-        </label>
-      </div>
+      {/* The hub fades in with the arc. */}
+      <g aria-hidden="true" opacity={t}>
+        <circle cx={hub.x} cy={hub.y} r={36} fill={tokens.color.accent} />
+        {[-10, 0, 10].map((dx) => (
+          <circle
+            key={dx}
+            cx={hub.x + dx}
+            cy={hub.y}
+            r={3}
+            fill={tokens.color.accentInk}
+          />
+        ))}
+      </g>
 
-      <VectorUIRoot
-        width={ROOT_W}
-        height={ROOT_H}
-        style={{ maxWidth: ROOT_W, background: tokens.color.surfaceSunken }}
+      <PathFlow
+        curve={curve}
+        distribute="even"
+        orient={orient}
+        role="menu"
+        aria-label="Radial menu"
       >
-        {/* The curve itself, drawn faintly as a guide. */}
-        <path
-          d={curve.toPathData()}
-          fill="none"
-          stroke={tokens.color.line}
-          strokeWidth={1.5}
-          strokeDasharray="3 6"
-          aria-hidden="true"
-        />
-
-        {/* The hub fades in with the arc. */}
-        <g aria-hidden="true" opacity={t}>
-          <circle cx={HUB.x} cy={HUB.y} r={36} fill={tokens.color.accent} />
-          {[-10, 0, 10].map((dx) => (
-            <circle
-              key={dx}
-              cx={HUB.x + dx}
-              cy={HUB.y}
-              r={3}
-              fill={tokens.color.accentInk}
-            />
-          ))}
-        </g>
-
-        <PathFlow
-          curve={curve}
-          distribute="even"
-          orient={orient}
-          role="menu"
-          aria-label="Radial menu"
-        >
-          {ITEMS.map((name) => (
-            <MenuItem key={name} name={name} />
-          ))}
-        </PathFlow>
-      </VectorUIRoot>
-    </div>
+        {items.map((name) => (
+          <MenuItem key={name} name={name} />
+        ))}
+      </PathFlow>
+    </>
   );
 }
 

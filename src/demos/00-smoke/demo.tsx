@@ -1,33 +1,16 @@
 import { VectorUIRoot } from "../../components/VectorUIRoot";
 import { Path } from "../../svg/Path";
-import { useCoordinateScale } from "../../layout/coordinateScale";
+import { ScaleReadout } from "./ScaleReadout";
 
 /**
  * Demo 0 — implementation steps 1 & 2.
  *
  * Step 1: a trivial SVG primitive on screen.
- * Step 2: VectorUIRoot + useCoordinateScale — resize the window and watch the
- *         layout<->pixel scale update live.
+ * Step 2: VectorUIRoot + useCoordinateScale — the reusable `<ScaleReadout>`
+ *         (see ScaleReadout.tsx) prints the live layout↔pixel scale; resize
+ *         the window to watch it update.
  */
-
-/** Reads the live scale and prints it inside the SVG (layout space). */
-function ScaleReadout() {
-  const { scale, viewBoxWidth, viewBoxHeight } = useCoordinateScale();
-  return (
-    <text
-      x={viewBoxWidth / 2}
-      y={viewBoxHeight / 2 + 6}
-      textAnchor="middle"
-      fontFamily="ui-monospace, monospace"
-      fontSize={16}
-      fill="#0b3d2e"
-    >
-      scale = {scale.toFixed(4)} px / layout unit
-    </text>
-  );
-}
-
-export function Smoke() {
+export function Demo() {
   return (
     <div>
       <p style={{ color: "#555", maxWidth: 560 }}>
@@ -38,7 +21,11 @@ export function Smoke() {
       <VectorUIRoot
         width={400}
         height={200}
-        style={{ maxWidth: 720, border: "1px solid #ddd", background: "#fbfbf9" }}
+        style={{
+          maxWidth: 720,
+          border: "1px solid #ddd",
+          background: "#fbfbf9",
+        }}
       >
         <Path
           d="M 40 100 q 60 -90 160 0 q 100 90 160 0"

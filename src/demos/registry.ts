@@ -1,26 +1,36 @@
 import type { ComponentType } from "react";
-import { Smoke } from "./00-smoke/Smoke";
-import { TextFidelity } from "./text-fidelity/TextFidelity";
-import { TextFlow } from "./01-text-flow/TextFlow";
-import { Card } from "./02-card/Card";
-import { RadialMenu } from "./03-radial-menu/RadialMenu";
-import { BreakpointMorph } from "./04-breakpoint-morph/BreakpointMorph";
-import { Settings } from "./05-settings/Settings";
+
+// Each demo is a `demo.tsx` page (controls + scene) that renders a reusable
+// component from the same folder.
+import { Demo as SmokeDemo } from "./00-smoke/demo";
+import { Demo as TextFidelityDemo } from "./text-fidelity/demo";
+import { Demo as TextFlowDemo } from "./01-text-flow/demo";
+import { Demo as CardDemo } from "./02-card/demo";
+import { Demo as RadialMenuDemo } from "./03-radial-menu/demo";
+import { Demo as BreakpointMorphDemo } from "./04-breakpoint-morph/demo";
+import { Demo as SettingsDemo } from "./05-settings/demo";
 
 // Demo source, imported verbatim via Vite's `?raw` so each demo page can show
-// the exact code that produced it (the "Code" tab).
-import smokeSrc from "./00-smoke/Smoke.tsx?raw";
-import textFidelitySrc from "./text-fidelity/TextFidelity.tsx?raw";
+// the exact code that produced it (the "Code" tab) — demo.tsx first.
+import smokeDemoSrc from "./00-smoke/demo.tsx?raw";
+import scaleReadoutSrc from "./00-smoke/ScaleReadout.tsx?raw";
+import textFidelityDemoSrc from "./text-fidelity/demo.tsx?raw";
+import textComparisonSrc from "./text-fidelity/TextComparison.tsx?raw";
 import samplesSrc from "./text-fidelity/samples.ts?raw";
+import textFlowDemoSrc from "./01-text-flow/demo.tsx?raw";
 import textFlowSrc from "./01-text-flow/TextFlow.tsx?raw";
 import cornerBlobSrc from "./01-text-flow/cornerBlob.ts?raw";
+import cardDemoSrc from "./02-card/demo.tsx?raw";
 import cardSrc from "./02-card/Card.tsx?raw";
 import buttonSrc from "./02-card/Button.tsx?raw";
 import useTweenSrc from "./02-card/useTween.ts?raw";
+import radialMenuDemoSrc from "./03-radial-menu/demo.tsx?raw";
 import radialMenuSrc from "./03-radial-menu/RadialMenu.tsx?raw";
 import iconSrc from "./03-radial-menu/Icon.tsx?raw";
-import breakpointMorphSrc from "./04-breakpoint-morph/BreakpointMorph.tsx?raw";
-import settingsSrc from "./05-settings/Settings.tsx?raw";
+import breakpointMorphDemoSrc from "./04-breakpoint-morph/demo.tsx?raw";
+import morphCardSrc from "./04-breakpoint-morph/MorphCard.tsx?raw";
+import settingsDemoSrc from "./05-settings/demo.tsx?raw";
+import settingsPanelSrc from "./05-settings/SettingsPanel.tsx?raw";
 
 /** One source file shown in a demo's Code tab. */
 export type SourceFile = { name: string; code: string };
@@ -32,7 +42,7 @@ export type DemoEntry = {
   blurb: string;
   proves: string;
   Component?: ComponentType;
-  /** The demo's own source files — first is the entry file. */
+  /** The demo's own source files — `demo.tsx` first, then its components. */
   sources?: SourceFile[];
 };
 
@@ -44,8 +54,11 @@ export const DEMOS: DemoEntry[] = [
     blurb:
       "A trivial SVG scene plus a live readout of the layout↔pixel scale. Resize the window to watch it update.",
     proves: "Steps 1–2: VectorUIRoot, useCoordinateScale, ResizeObserver.",
-    Component: Smoke,
-    sources: [{ name: "Smoke.tsx", code: smokeSrc }],
+    Component: SmokeDemo,
+    sources: [
+      { name: "demo.tsx", code: smokeDemoSrc },
+      { name: "ScaleReadout.tsx", code: scaleReadoutSrc },
+    ],
   },
   {
     id: "text-fidelity",
@@ -53,9 +66,10 @@ export const DEMOS: DemoEntry[] = [
     blurb:
       "pretext-driven SVG text vs. the browser's native line breaker, side by side and as an overlay.",
     proves: "Step 3: the Text primitive. The SPEC §14 risk gate.",
-    Component: TextFidelity,
+    Component: TextFidelityDemo,
     sources: [
-      { name: "TextFidelity.tsx", code: textFidelitySrc },
+      { name: "demo.tsx", code: textFidelityDemoSrc },
+      { name: "TextComparison.tsx", code: textComparisonSrc },
       { name: "samples.ts", code: samplesSrc },
     ],
   },
@@ -65,8 +79,9 @@ export const DEMOS: DemoEntry[] = [
     blurb:
       "A column of body text wrapping the silhouette of a blob floated into the corner.",
     proves: "Step 4: pretext flow-around, variable-width line layout.",
-    Component: TextFlow,
+    Component: TextFlowDemo,
     sources: [
+      { name: "demo.tsx", code: textFlowDemoSrc },
       { name: "TextFlow.tsx", code: textFlowSrc },
       { name: "cornerBlob.ts", code: cornerBlobSrc },
     ],
@@ -77,8 +92,9 @@ export const DEMOS: DemoEntry[] = [
     blurb:
       "A blob-shaped card with header / body / actions slots; the body shrink-wraps its height.",
     proves: "Steps 5–6: Frame, the slot system, path-as-container.",
-    Component: Card,
+    Component: CardDemo,
     sources: [
+      { name: "demo.tsx", code: cardDemoSrc },
       { name: "Card.tsx", code: cardSrc },
       { name: "Button.tsx", code: buttonSrc },
       { name: "useTween.ts", code: useTweenSrc },
@@ -90,8 +106,9 @@ export const DEMOS: DemoEntry[] = [
     blurb:
       "Six items distributed along an arc around a hub, rotated to the tangent.",
     proves: "Step 7: PathFlow, arc-length distribution, tangent rotation.",
-    Component: RadialMenu,
+    Component: RadialMenuDemo,
     sources: [
+      { name: "demo.tsx", code: radialMenuDemoSrc },
       { name: "RadialMenu.tsx", code: radialMenuSrc },
       { name: "Icon.tsx", code: iconSrc },
     ],
@@ -102,8 +119,11 @@ export const DEMOS: DemoEntry[] = [
     blurb:
       "A card that morphs from blob to rounded rectangle as the viewport crosses 600px.",
     proves: "Step 8: breakpoint system, path morphing, ResizeObserver wiring.",
-    Component: BreakpointMorph,
-    sources: [{ name: "BreakpointMorph.tsx", code: breakpointMorphSrc }],
+    Component: BreakpointMorphDemo,
+    sources: [
+      { name: "demo.tsx", code: breakpointMorphDemoSrc },
+      { name: "MorphCard.tsx", code: morphCardSrc },
+    ],
   },
   {
     id: "05-settings",
@@ -111,8 +131,11 @@ export const DEMOS: DemoEntry[] = [
     blurb:
       "Curved tabs, a paragraph flowing around an illustration, non-rectangular rows.",
     proves: "Step 9: every primitive composed; design tokens.",
-    Component: Settings,
-    sources: [{ name: "Settings.tsx", code: settingsSrc }],
+    Component: SettingsDemo,
+    sources: [
+      { name: "demo.tsx", code: settingsDemoSrc },
+      { name: "SettingsPanel.tsx", code: settingsPanelSrc },
+    ],
   },
 ];
 

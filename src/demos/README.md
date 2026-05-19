@@ -16,3 +16,17 @@ one route each via the hash router.
 
 Demo 1 is the headline: a column of body text wrapping a shape's silhouette —
 the thing that is impossible in plain HTML/CSS without absurd hacks.
+
+## Folder convention
+
+Each demo folder separates the **reusable component** from the **demo page**:
+
+- `demo.tsx` — the page: controls, description, the `VectorUIRoot`, and the
+  hard-coded arguments. The hash router renders this.
+- `<Component>.tsx` — the reusable component (`Card`, `RadialMenu`,
+  `MorphCard`, `SettingsPanel`, …), parameterized entirely by props.
+- helpers (`Button.tsx`, `Icon.tsx`, `cornerBlob.ts`, `useTween.ts`, …).
+
+So `02-card/demo.tsx` imports `02-card/Card.tsx` and passes it arguments — the
+component carries no demo-specific hard-coded content. Each demo page's **Code**
+tab lists `demo.tsx` first, then the component files.

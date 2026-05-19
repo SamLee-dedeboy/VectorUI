@@ -1,5 +1,4 @@
 import { useCallback, useMemo, useState } from "react";
-import { VectorUIRoot } from "../../components/VectorUIRoot";
 import { Frame } from "../../components/Frame";
 import { Flow } from "../../components/Flow";
 import { PathFlow } from "../../components/PathFlow";
@@ -13,118 +12,80 @@ import { useTween } from "../02-card/useTween";
 import { cornerBlob } from "../01-text-flow/cornerBlob";
 
 /**
- * Demo 5 — composed, interactive "settings" page (SPEC §11).
+ * `SettingsPanel` — a reusable, data-driven settings screen.
  *
- * The whole screen is one `Frame` (the panel) whose interior is one `Flow`
- * (tabs, divider, body, rows). The Frame auto-sizes to that Flow and the root
- * uses `height="content"`, so the page has no height plumbing at all — no
- * `useState` seed, no `onMeasure`/`onLayout` callbacks.
- *
- * Responsiveness: the root uses `width="auto"`, so `scale` stays 1 and the
- * layout reflows to the real width instead of shrinking. Tabs switch, toggles
- * flip with an animated knob, value rows cycle.
- *
- * Proves: the primitives compose into something that reads as a real UI.
+ * Pass a `sections` array; the panel renders the tabs, body and rows, owns the
+ * interactive state (active tab, toggles, value rows), and derives the initial
+ * toggle/value state from each row's declared default. Must be rendered under
+ * a `VectorUIRoot` (it reads `useViewportWidth`). See `demo.tsx` for data.
  */
 
 const { color, type, space, shapes, filters } = tokens;
 
 const OUTER = 24; // margin around the panel
 const PAD = 30; // panel inner padding
-const MIN_WIDTH = 520;
 const PAGE_GAP = 20;
 const ROW_GAP = 12;
 const ROW_H = 66;
+const TAB_H = 38;
+const TAB_CENTER_Y = 22;
 
-type RowKind =
-  | { kind: "toggle" }
-  | { kind: "value"; options: readonly string[] };
+/** Minimum panel width — exported so a host can set the SVG's `min-width`. */
+export const MIN_WIDTH = 520;
 
-type RowDef = { id: string; title: string; caption: string } & RowKind;
+export type RowDef =
+  | {
+      id: string;
+      title: string;
+      caption: string;
+      kind: "toggle";
+      /** Initial on/off state. */
+      defaultOn?: boolean;
+    }
+  | {
+      id: string;
+      title: string;
+      caption: string;
+      kind: "value";
+      options: readonly string[];
+      /** Initial option index. */
+      defaultIndex?: number;
+    };
 
-type Section = {
+export type Section = {
   tab: string;
   eyebrow: string;
   body: string;
   rows: RowDef[];
 };
 
-const SECTIONS: Section[] = [
-  {
-    tab: "Appearance",
-    eyebrow: "APPEARANCE",
-    body: "These preferences are rendered entirely in SVG. The paragraph you are reading wraps the contour of the shape to its left — not a rectangle — and the rows below are closed paths, not boxes.",
-    rows: [
-      { id: "dark", title: "Dark mode", caption: "Match the system at sundown", kind: "toggle" },
-      { id: "motion", title: "Reduced motion", caption: "Minimize non-essential animation", kind: "toggle" },
-      { id: "size", title: "Text size", caption: "Body copy scale", kind: "value", options: ["Small", "Medium", "Large"] },
-    ],
-  },
-  {
-    tab: "Privacy",
-    eyebrow: "PRIVACY",
-    body: "Control what leaves this device. Each switch below is a closed path with a knob that animates between its two states — the same Frame primitive as every other row, and the rows stack on rendered bounds.",
-    rows: [
-      { id: "analytics", title: "Usage analytics", caption: "Share anonymous metrics", kind: "toggle" },
-      { id: "history", title: "Search history", caption: "Keep recent queries", kind: "toggle" },
-      { id: "visibility", title: "Profile visibility", caption: "Who can find you", kind: "value", options: ["Private", "Contacts", "Public"] },
-    ],
-  },
-  {
-    tab: "Account",
-    eyebrow: "ACCOUNT",
-    body: "Your account spans every device. Switching tabs re-flows this whole panel through one Flow — try it, then narrow the window and watch the layout adapt instead of shrinking.",
-    rows: [
-      { id: "twofa", title: "Two-factor auth", caption: "Require a code at sign-in", kind: "toggle" },
-      { id: "backup", title: "Cloud backup", caption: "Sync settings across devices", kind: "toggle" },
-      { id: "plan", title: "Plan", caption: "Billing tier", kind: "value", options: ["Free", "Pro", "Team"] },
-    ],
-  },
-];
-
-const INITIAL_TOGGLES: Record<string, boolean> = {
-  dark: true,
-  motion: false,
-  analytics: true,
-  history: true,
-  twofa: false,
-  backup: true,
-};
-const INITIAL_VALUES: Record<string, number> = {
-  size: 1,
-  visibility: 1,
-  plan: 1,
+export type SettingsPanelProps = {
+  sections: Section[];
 };
 
-export function Settings() {
-  return (
-    <div>
-      <p style={{ color: "#555", maxWidth: 640 }}>
-        The screen is one <code>Frame</code> wrapping one <code>Flow</code>;
-        the Frame auto-sizes and the root uses <code>height="content"</code>, so
-        there is no height plumbing. Switch tabs, flip toggles, tap a value row.
-      </p>
-      <div style={{ overflowX: "auto" }}>
-        <VectorUIRoot
-          width="auto"
-          height="content"
-          style={{ minWidth: MIN_WIDTH, background: color.surfaceSunken }}
-        >
-          <SettingsScene />
-        </VectorUIRoot>
-      </div>
-    </div>
-  );
+function initialToggles(sections: Section[]): Record<string, boolean> {
+  const state: Record<string, boolean> = {};
+  for (const section of sections)
+    for (const row of section.rows)
+      if (row.kind === "toggle") state[row.id] = row.defaultOn ?? false;
+  return state;
 }
 
-/** Lives under VectorUIRoot so it can reflow to the live viewport width. */
-function SettingsScene() {
+function initialValues(sections: Section[]): Record<string, number> {
+  const state: Record<string, number> = {};
+  for (const section of sections)
+    for (const row of section.rows)
+      if (row.kind === "value") state[row.id] = row.defaultIndex ?? 0;
+  return state;
+}
+
+export function SettingsPanel({ sections }: SettingsPanelProps) {
   const width = useViewportWidth();
   const [activeTab, setActiveTab] = useState(0);
-  const [toggles, setToggles] = useState(INITIAL_TOGGLES);
-  const [values, setValues] = useState(INITIAL_VALUES);
+  const [toggles, setToggles] = useState(() => initialToggles(sections));
+  const [values, setValues] = useState(() => initialValues(sections));
 
-  const section = SECTIONS[activeTab];
+  const section = sections[activeTab] ?? sections[0];
   const panelW = Math.max(width, MIN_WIDTH) - OUTER * 2;
   const contentW = panelW - PAD * 2;
 
@@ -158,6 +119,7 @@ function SettingsScene() {
         <Frame.Slot name="page">
           <Flow gap={PAGE_GAP}>
             <TabBar
+              sections={sections}
               contentW={contentW}
               activeTab={activeTab}
               onSelect={setActiveTab}
@@ -198,14 +160,13 @@ function SettingsScene() {
 
 // --- tab bar --------------------------------------------------------------
 
-const TAB_H = 38;
-const TAB_CENTER_Y = 22;
-
 function TabBar({
+  sections,
   contentW,
   activeTab,
   onSelect,
 }: {
+  sections: Section[];
   contentW: number;
   activeTab: number;
   onSelect: (i: number) => void;
@@ -224,7 +185,7 @@ function TabBar({
       role="tablist"
       aria-label="Settings sections"
     >
-      {SECTIONS.map((s, i) => (
+      {sections.map((s, i) => (
         <Tab
           key={s.tab}
           label={s.tab}
