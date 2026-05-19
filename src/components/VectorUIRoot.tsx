@@ -11,6 +11,7 @@ import {
   CoordinateScaleContext,
   type CoordinateScale,
 } from "../layout/coordinateScale";
+import { useFitToContent } from "../layout/childBounds";
 import { colorVars } from "../tokens";
 import { TokenDefs } from "./TokenDefs";
 
@@ -27,6 +28,10 @@ import { TokenDefs } from "./TokenDefs";
  * real pixel width, pinning `scale` to 1. The scene then stays at 1:1 and a
  * layout reflows itself by reading `useViewportWidth()` — the right model for
  * a content surface (e.g. a settings page) that should not shrink-to-fit.
+ *
+ * `height="content"` sizes the viewBox height to the rendered content, so a
+ * scene whose height is data-driven needs no `onMeasure`/`onLayout` callback
+ * dance and no guessed fallback height.
  */
 export type VectorUIRootProps = Omit<
   SVGProps<SVGSVGElement>,
@@ -34,8 +39,8 @@ export type VectorUIRootProps = Omit<
 > & {
   /** viewBox width in layout units, or "auto" to track the real pixel width. */
   width: number | "auto";
-  /** viewBox height, in layout units. */
-  height: number;
+  /** viewBox height in layout units, or "content" to fit the rendered content. */
+  height: number | "content";
   children?: ReactNode;
   style?: CSSProperties;
 };
@@ -75,16 +80,23 @@ export function VectorUIRoot({
       ? pixelWidth / width
       : 1;
 
+  // When height is "content", the viewBox height tracks the rendered content.
+  const isContentHeight = height === "content";
+  const fit = useFitToContent();
+  const viewBoxHeight = isContentHeight
+    ? Math.max(fit.size?.height ?? 1, 1)
+    : height;
+
   const value = useMemo<CoordinateScale>(
-    () => ({ scale, viewBoxWidth, viewBoxHeight: height }),
-    [scale, viewBoxWidth, height],
+    () => ({ scale, viewBoxWidth, viewBoxHeight }),
+    [scale, viewBoxWidth, viewBoxHeight],
   );
 
   return (
     <CoordinateScaleContext.Provider value={value}>
       <svg
         ref={svgRef}
-        viewBox={`0 0 ${viewBoxWidth} ${height}`}
+        viewBox={`0 0 ${viewBoxWidth} ${viewBoxHeight}`}
         style={{
           display: "block",
           width: "100%",
@@ -100,7 +112,7 @@ export function VectorUIRoot({
         <TokenDefs />
         {/* Until the ResizeObserver reports a width, scale is a placeholder 1;
             text measurement waits on `pixelWidth > 0` via the components. */}
-        {children}
+        {isContentHeight ? <g ref={fit.ref}>{children}</g> : children}
       </svg>
     </CoordinateScaleContext.Provider>
   );

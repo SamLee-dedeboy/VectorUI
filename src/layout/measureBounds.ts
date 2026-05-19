@@ -6,7 +6,7 @@ import { useLayoutEffect, useRef, type RefObject } from "react";
  * The one mechanism for "how big did this subtree actually render?". Unlike a
  * component's self-measurement (e.g. Text reporting only its text height),
  * `getBBox` reports the true rendered extent of *everything* inside — shapes,
- * text, nested groups alike. `Stack`, `Frame.Slot` and `PathFlow` all stack
+ * text, nested groups alike. `Flow`, `Frame.Slot` and `PathFlow` all stack
  * and place their children off this, so a tall floated shape or an
  * unexpectedly-wrapped paragraph is never undercounted.
  */

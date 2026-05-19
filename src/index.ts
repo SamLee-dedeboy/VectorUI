@@ -24,8 +24,10 @@ export type {
 } from "./components/Frame";
 export { PathFlow } from "./components/PathFlow";
 export type { PathFlowProps } from "./components/PathFlow";
-export { Stack } from "./components/Stack";
-export type { StackProps } from "./components/Stack";
+export { Flow } from "./components/Flow";
+export type { FlowProps, FlowDirection, FlowAlign } from "./components/Flow";
+export { Pill } from "./components/Pill";
+export type { PillProps } from "./components/Pill";
 
 export { TokenDefs } from "./components/TokenDefs";
 
@@ -82,8 +84,15 @@ export type {
   FontMetrics,
 } from "./layout/measureText";
 export { useFontsReady } from "./layout/fonts";
+export { useNaturalTextWidth } from "./layout/textWidth";
 export { useMeasuredBounds, boundsEqual } from "./layout/measureBounds";
 export type { Bounds } from "./layout/measureBounds";
+export { useChildBounds, useFitToContent } from "./layout/childBounds";
+export type {
+  ChildBounds,
+  ChildBoundsApi,
+  FitSize,
+} from "./layout/childBounds";
 export { usePrefersReducedMotion } from "./layout/motion";
 export { morphPath, tokenizePath } from "./layout/morphPath";
 export {

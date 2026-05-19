@@ -1,5 +1,6 @@
 import { VectorUIRoot } from "../../components/VectorUIRoot";
 import { Frame } from "../../components/Frame";
+import { Flow } from "../../components/Flow";
 import { Text } from "../../components/Text";
 import {
   useViewportWidth,
@@ -60,12 +61,6 @@ function MorphCard() {
   // Reduced motion: snap to one shape or the other instead of easing.
   const t = reduced ? (raw < 0.5 ? 0 : 1) : smoothstep(raw);
 
-  // Text is pixel-locked; the caption's offset below the title must therefore
-  // be expressed in pixels and converted to layout units via the live scale,
-  // or it overlaps the title once the viewBox is scaled down.
-  const scale = width > 0 ? width / VIEW_W : 1;
-  const captionY = (tokens.type.title.lineHeight + 6) / scale;
-
   const shape = (w: number, h: number) =>
     morphPath(tokens.shapes.blob(w, h, 0.25), tokens.shapes.sharp(w, h), t);
 
@@ -110,17 +105,24 @@ function MorphCard() {
           aria-label="A card whose shape responds to viewport width"
         >
           <Frame.Slot name="label">
-            <Text {...tokens.type.title} maxWidth="100%" fill={tokens.color.ink}>
-              Resize the window
-            </Text>
-            <Text
-              {...tokens.type.caption}
-              maxWidth="100%"
-              y={captionY}
-              fill={tokens.color.inkMuted}
-            >
-              Below 600px this blob squares off into a card.
-            </Text>
+            {/* A Flow stacks the caption below the title by measured bounds —
+                no scale-aware y-offset, even as the viewBox scales. */}
+            <Flow gap={tokens.space.xs}>
+              <Text
+                {...tokens.type.title}
+                maxWidth="100%"
+                fill={tokens.color.ink}
+              >
+                Resize the window
+              </Text>
+              <Text
+                {...tokens.type.caption}
+                maxWidth="100%"
+                fill={tokens.color.inkMuted}
+              >
+                Below 600px this blob squares off into a card.
+              </Text>
+            </Flow>
           </Frame.Slot>
         </Frame>
       </g>

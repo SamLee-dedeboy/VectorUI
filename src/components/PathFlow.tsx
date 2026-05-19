@@ -1,8 +1,6 @@
 import {
   Children,
   isValidElement,
-  useCallback,
-  useState,
   type ReactNode,
   type SVGProps,
 } from "react";
@@ -11,7 +9,7 @@ import {
   type Curve,
   type Distribute,
 } from "../layout/walkPath";
-import { useMeasuredBounds } from "../layout/measureBounds";
+import { useChildBounds } from "../layout/childBounds";
 
 /**
  * Layer 3 — `PathFlow`: distribute children along a curve (SPEC §6.2).
@@ -45,19 +43,10 @@ export function PathFlow({
 }: PathFlowProps) {
   const items = Children.toArray(children).filter(isValidElement);
 
-  // Natural width of each child, measured via getBBox. Only "start"/"end"/
-  // "spread" consume these; "even" ignores them, so it needs no measure pass.
-  const [widths, setWidths] = useState<number[]>([]);
-  const reportWidth = useCallback((index: number, w: number) => {
-    setWidths((prev) => {
-      if (prev[index] === w) return prev;
-      const next = prev.slice();
-      next[index] = w;
-      return next;
-    });
-  }, []);
-
-  const itemWidths = items.map((_, i) => widths[i] ?? 0);
+  // Rendered bounds per child (shared measurement core). Only "start"/"end"/
+  // "spread" consume the widths; "even" ignores them.
+  const { bounds, Measured } = useChildBounds();
+  const itemWidths = items.map((_, i) => bounds[i]?.width ?? 0);
   const offsets = distributeAlong(curve.length, items.length, {
     distribute,
     gap,
@@ -78,46 +67,14 @@ export function PathFlow({
         const angleDeg = orient === "along" ? (tangent * 180) / Math.PI : 0;
 
         return (
-          <PathFlowItem
+          <g
             key={i}
-            index={i}
-            x={x}
-            y={y}
-            angleDeg={angleDeg}
-            onWidth={reportWidth}
+            transform={`translate(${x} ${y}) rotate(${angleDeg})`}
           >
-            {child}
-          </PathFlowItem>
+            <Measured index={i}>{child}</Measured>
+          </g>
         );
       })}
-    </g>
-  );
-}
-
-type PathFlowItemProps = {
-  index: number;
-  x: number;
-  y: number;
-  angleDeg: number;
-  onWidth: (index: number, w: number) => void;
-  children: ReactNode;
-};
-
-function PathFlowItem({
-  index,
-  x,
-  y,
-  angleDeg,
-  onWidth,
-  children,
-}: PathFlowItemProps) {
-  // Natural width from rendered bounds (see measureBounds).
-  const contentRef = useMeasuredBounds<SVGGElement>((b) =>
-    onWidth(index, Math.round(b.width)),
-  );
-  return (
-    <g transform={`translate(${x} ${y}) rotate(${angleDeg})`}>
-      <g ref={contentRef}>{children}</g>
     </g>
   );
 }

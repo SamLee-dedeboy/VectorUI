@@ -1,0 +1,88 @@
+import {
+  Children,
+  isValidElement,
+  useEffect,
+  type ReactNode,
+  type SVGProps,
+} from "react";
+import { useChildBounds } from "../layout/childBounds";
+import {
+  computeFlowLayout,
+  type FlowDirection,
+  type FlowAlign,
+} from "../layout/flowLayout";
+
+export type { FlowDirection, FlowAlign };
+
+/**
+ * Layer 3 — `Flow`: linear layout of measured children.
+ *
+ * Children are placed one after another along the main axis (`direction`),
+ * each positioned by its RENDERED bounds — so a child taller/wider than
+ * expected never collides with its sibling. `padding` and cross-axis `align`
+ * are first-class, which retires the hand-computed `OUTER + PAD` offsets and
+ * `-w / 2` centering arithmetic that consumer code used to carry.
+ *
+ * This is the general linear-layout primitive; `Frame` handles shape-as-
+ * container and `PathFlow` handles distribution along a genuine curve. The
+ * placement maths lives in the pure `computeFlowLayout` (src/layout).
+ */
+export type FlowProps = Omit<SVGProps<SVGGElement>, "children"> & {
+  /** Main axis. "column" stacks vertically (default), "row" horizontally. */
+  direction?: FlowDirection;
+  /** Gap between children, in layout units. */
+  gap?: number;
+  /** Inner inset: one number for all sides, or [vertical, horizontal]. */
+  padding?: number | [number, number];
+  /** Cross-axis alignment of children. */
+  align?: FlowAlign;
+  /** Explicit cross-axis extent; defaults to the widest/tallest child. */
+  crossSize?: number;
+  /** Top-left of the flow, in layout units. */
+  x?: number;
+  y?: number;
+  /** Reports the flow's resolved size once measured. */
+  onMeasure?: (size: { width: number; height: number }) => void;
+  children: ReactNode;
+};
+
+export function Flow({
+  direction = "column",
+  gap = 0,
+  padding = 0,
+  align = "start",
+  crossSize,
+  x = 0,
+  y = 0,
+  onMeasure,
+  children,
+  ...gProps
+}: FlowProps) {
+  const items = Children.toArray(children).filter(isValidElement);
+  const { bounds, Measured } = useChildBounds();
+
+  const layout = computeFlowLayout(bounds, items.length, {
+    direction,
+    gap,
+    align,
+    crossSize,
+    padding: Array.isArray(padding) ? padding : [padding, padding],
+  });
+
+  useEffect(() => {
+    onMeasure?.({ width: layout.width, height: layout.height });
+  }, [onMeasure, layout.width, layout.height]);
+
+  return (
+    <g transform={`translate(${x} ${y})`} {...gProps}>
+      {items.map((child, i) => (
+        <g
+          key={i}
+          transform={`translate(${layout.placements[i].tx} ${layout.placements[i].ty})`}
+        >
+          <Measured index={i}>{child}</Measured>
+        </g>
+      ))}
+    </g>
+  );
+}

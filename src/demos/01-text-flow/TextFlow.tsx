@@ -1,6 +1,7 @@
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { VectorUIRoot } from "../../components/VectorUIRoot";
-import { Text, type FlowAround, type TextMeasurement } from "../../components/Text";
+import { Flow } from "../../components/Flow";
+import { Text, type FlowAround } from "../../components/Text";
 import { Path } from "../../svg/Path";
 import { tokens } from "../../tokens";
 import { cornerBlob } from "./cornerBlob";
@@ -24,17 +25,12 @@ const VIEW_WIDTH = 760;
 export function TextFlow() {
   const [columnWidth, setColumnWidth] = useState(VIEW_WIDTH - PAD * 2);
   const [showSilhouette, setShowSilhouette] = useState(false);
-  const [measured, setMeasured] = useState<TextMeasurement | null>(null);
 
   const blob = useMemo(() => cornerBlob({ width: 168, height: 212 }), []);
   const flowAround = useMemo<FlowAround>(
     () => ({ intrusionAt: blob.intrusionAt, gap: 24 }),
     [blob],
   );
-  const onMeasure = useCallback((m: TextMeasurement) => setMeasured(m), []);
-
-  const blockHeight = measured?.height ?? 460;
-  const viewHeight = blockHeight + PAD * 2;
 
   return (
     <div>
@@ -73,34 +69,37 @@ export function TextFlow() {
         </label>
       </div>
 
+      {/* height="content" sizes the viewBox; Flow's padding insets the
+          scene — no measured-height state, no guessed fallback. */}
       <VectorUIRoot
         width={VIEW_WIDTH}
-        height={viewHeight}
+        height="content"
         style={{
           maxWidth: VIEW_WIDTH,
           border: `1px solid ${tokens.color.line}`,
           background: tokens.color.surface,
         }}
       >
-        <g transform={`translate(${PAD} ${PAD})`}>
-          {/* The float. Decorative — aria-hidden by default via <Path>. */}
-          <Path
-            d={blob.path}
-            fill={tokens.color.accentSoft}
-            stroke={showSilhouette ? tokens.color.accent : "none"}
-            strokeWidth={showSilhouette ? 2 : 0}
-          />
-          <Text
-            {...tokens.type.body}
-            lineHeight={26}
-            maxWidth={columnWidth}
-            flowAround={flowAround}
-            fill={tokens.color.ink}
-            onMeasure={onMeasure}
-          >
-            {BODY}
-          </Text>
-        </g>
+        <Flow padding={PAD}>
+          <g>
+            {/* The float. Decorative — aria-hidden by default via <Path>. */}
+            <Path
+              d={blob.path}
+              fill={tokens.color.accentSoft}
+              stroke={showSilhouette ? tokens.color.accent : "none"}
+              strokeWidth={showSilhouette ? 2 : 0}
+            />
+            <Text
+              {...tokens.type.body}
+              lineHeight={26}
+              maxWidth={columnWidth}
+              flowAround={flowAround}
+              fill={tokens.color.ink}
+            >
+              {BODY}
+            </Text>
+          </g>
+        </Flow>
       </VectorUIRoot>
     </div>
   );

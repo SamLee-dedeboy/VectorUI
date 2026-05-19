@@ -1,15 +1,13 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { measureNaturalWidth } from "@chenglou/pretext";
+import { useCallback, useMemo, useState } from "react";
 import { VectorUIRoot } from "../../components/VectorUIRoot";
 import { Frame } from "../../components/Frame";
+import { Flow } from "../../components/Flow";
 import { PathFlow } from "../../components/PathFlow";
-import { Stack } from "../../components/Stack";
+import { Pill } from "../../components/Pill";
 import { Text, type FlowAround } from "../../components/Text";
 import { Path } from "../../svg/Path";
 import { quadratic } from "../../layout/walkPath";
 import { useViewportWidth } from "../../layout/breakpoints";
-import { useFontsReady } from "../../layout/fonts";
-import { prepareCached } from "../../layout/measureText";
 import { tokens } from "../../tokens";
 import { useTween } from "../02-card/useTween";
 import { cornerBlob } from "../01-text-flow/cornerBlob";
@@ -17,10 +15,10 @@ import { cornerBlob } from "../01-text-flow/cornerBlob";
 /**
  * Demo 5 — composed, interactive "settings" page (SPEC §11).
  *
- * The page's vertical layout is a `Stack`: tabs, divider, body block and the
- * row list are stacked by their RENDERED bounds, so the rows always clear the
- * body block — even though the body's illustration is taller than its text.
- * No magic-number offsets, no per-section height plumbing.
+ * The whole screen is one `Frame` (the panel) whose interior is one `Flow`
+ * (tabs, divider, body, rows). The Frame auto-sizes to that Flow and the root
+ * uses `height="content"`, so the page has no height plumbing at all — no
+ * `useState` seed, no `onMeasure`/`onLayout` callbacks.
  *
  * Responsiveness: the root uses `width="auto"`, so `scale` stays 1 and the
  * layout reflows to the real width instead of shrinking. Tabs switch, toggles
@@ -31,7 +29,7 @@ import { cornerBlob } from "../01-text-flow/cornerBlob";
 
 const { color, type, space, shapes, filters } = tokens;
 
-const OUTER = 24; // panel margin
+const OUTER = 24; // margin around the panel
 const PAD = 30; // panel inner padding
 const MIN_WIDTH = 520;
 const PAGE_GAP = 20;
@@ -75,7 +73,7 @@ const SECTIONS: Section[] = [
   {
     tab: "Account",
     eyebrow: "ACCOUNT",
-    body: "Your account spans every device. Switching tabs re-flows this whole panel through one Stack — try it, then narrow the window and watch the layout adapt instead of shrinking.",
+    body: "Your account spans every device. Switching tabs re-flows this whole panel through one Flow — try it, then narrow the window and watch the layout adapt instead of shrinking.",
     rows: [
       { id: "twofa", title: "Two-factor auth", caption: "Require a code at sign-in", kind: "toggle" },
       { id: "backup", title: "Cloud backup", caption: "Sync settings across devices", kind: "toggle" },
@@ -99,21 +97,20 @@ const INITIAL_VALUES: Record<string, number> = {
 };
 
 export function Settings() {
-  const [height, setHeight] = useState(600);
   return (
     <div>
       <p style={{ color: "#555", maxWidth: 640 }}>
-        The page's vertical layout is one <code>Stack</code> — tabs, body and
-        rows are placed by their rendered bounds, so the rows clear the body's
-        illustration automatically. Switch tabs, flip toggles, tap a value row.
+        The screen is one <code>Frame</code> wrapping one <code>Flow</code>;
+        the Frame auto-sizes and the root uses <code>height="content"</code>, so
+        there is no height plumbing. Switch tabs, flip toggles, tap a value row.
       </p>
       <div style={{ overflowX: "auto" }}>
         <VectorUIRoot
           width="auto"
-          height={height}
+          height="content"
           style={{ minWidth: MIN_WIDTH, background: color.surfaceSunken }}
         >
-          <SettingsScene onHeight={setHeight} />
+          <SettingsScene />
         </VectorUIRoot>
       </div>
     </div>
@@ -121,27 +118,16 @@ export function Settings() {
 }
 
 /** Lives under VectorUIRoot so it can reflow to the live viewport width. */
-function SettingsScene({ onHeight }: { onHeight: (h: number) => void }) {
+function SettingsScene() {
   const width = useViewportWidth();
   const [activeTab, setActiveTab] = useState(0);
   const [toggles, setToggles] = useState(INITIAL_TOGGLES);
   const [values, setValues] = useState(INITIAL_VALUES);
-  const [contentHeight, setContentHeight] = useState(440);
 
   const section = SECTIONS[activeTab];
   const panelW = Math.max(width, MIN_WIDTH) - OUTER * 2;
   const contentW = panelW - PAD * 2;
 
-  const panelH = contentHeight + PAD * 2;
-  const totalH = panelH + OUTER * 2;
-  useEffect(() => {
-    onHeight(totalH);
-  }, [onHeight, totalH]);
-
-  const onContentMeasure = useCallback(
-    (size: { height: number }) => setContentHeight(size.height),
-    [],
-  );
   const toggleRow = useCallback((id: string) => {
     setToggles((prev) => ({ ...prev, [id]: !prev[id] }));
   }, []);
@@ -150,62 +136,69 @@ function SettingsScene({ onHeight }: { onHeight: (h: number) => void }) {
   }, []);
 
   return (
-    <>
-      {/* The screen panel. Decorative — aria-hidden via <Path>. */}
-      <Path
-        d={shapes.rectRounded(panelW, panelH)}
-        transform={`translate(${OUTER} ${OUTER})`}
+    // Outer Flow margins the panel; the panel Frame auto-sizes to its content.
+    <Flow padding={OUTER}>
+      <Frame
+        shape={shapes.rectRounded}
+        width={panelW}
+        height="auto"
+        padding={PAD}
+        slots={{
+          page: {
+            type: "region",
+            x: PAD,
+            y: PAD,
+            width: contentW,
+            height: "content",
+          },
+        }}
         fill={color.surface}
         filter={filters.softShadow}
-      />
-      {/* The whole page is one vertical Stack — measured, not hand-placed. */}
-      <Stack
-        x={OUTER + PAD}
-        y={OUTER + PAD}
-        gap={PAGE_GAP}
-        onMeasure={onContentMeasure}
       >
-        <TabBar
-          contentW={contentW}
-          activeTab={activeTab}
-          onSelect={setActiveTab}
-        />
-        <Path
-          d={`M 0 0 L ${contentW} 0`}
-          stroke={color.line}
-          strokeWidth={1.5}
-          aria-hidden="true"
-        />
-        <BodyBlock
-          contentW={contentW}
-          eyebrow={section.eyebrow}
-          body={section.body}
-        />
-        <Stack gap={ROW_GAP}>
-          {section.rows.map((row) => (
-            <SettingRow
-              key={row.id}
-              width={contentW}
-              row={row}
-              toggleOn={toggles[row.id] ?? false}
-              valueIndex={values[row.id] ?? 0}
-              onActivate={() =>
-                row.kind === "toggle"
-                  ? toggleRow(row.id)
-                  : cycleRow(row.id, row.options.length)
-              }
+        <Frame.Slot name="page">
+          <Flow gap={PAGE_GAP}>
+            <TabBar
+              contentW={contentW}
+              activeTab={activeTab}
+              onSelect={setActiveTab}
             />
-          ))}
-        </Stack>
-      </Stack>
-    </>
+            <Path
+              d={`M 0 0 L ${contentW} 0`}
+              stroke={color.line}
+              strokeWidth={1.5}
+              aria-hidden="true"
+            />
+            <BodyBlock
+              contentW={contentW}
+              eyebrow={section.eyebrow}
+              body={section.body}
+            />
+            <Flow gap={ROW_GAP}>
+              {section.rows.map((row) => (
+                <SettingRow
+                  key={row.id}
+                  width={contentW}
+                  row={row}
+                  toggleOn={toggles[row.id] ?? false}
+                  valueIndex={values[row.id] ?? 0}
+                  onActivate={() =>
+                    row.kind === "toggle"
+                      ? toggleRow(row.id)
+                      : cycleRow(row.id, row.options.length)
+                  }
+                />
+              ))}
+            </Flow>
+          </Flow>
+        </Frame.Slot>
+      </Frame>
+    </Flow>
   );
 }
 
 // --- tab bar --------------------------------------------------------------
 
 const TAB_H = 38;
-const TAB_PAD_X = 18;
 const TAB_CENTER_Y = 22;
 
 function TabBar({
@@ -243,6 +236,7 @@ function TabBar({
   );
 }
 
+/** A tab is a Pill, centered on its origin so PathFlow can place it. */
 function Tab({
   label,
   active,
@@ -252,32 +246,21 @@ function Tab({
   active: boolean;
   onClick: () => void;
 }) {
-  useFontsReady(); // re-measure once the web font loads
-  const labelW = measureNaturalWidth(prepareCached(label, type.label.font));
-  const w = labelW + TAB_PAD_X * 2;
   return (
-    <g
+    <Pill
       role="tab"
       aria-selected={active}
       onClick={onClick}
       style={{ cursor: "pointer" }}
+      origin="center"
+      textStyle={type.label}
+      height={TAB_H}
+      paddingX={18}
+      fill={active ? color.accent : color.surfaceSunken}
+      textFill={active ? color.accentInk : color.inkMuted}
     >
-      <Path
-        d={shapes.pill(w, TAB_H)}
-        transform={`translate(${-w / 2} ${-TAB_H / 2})`}
-        fill={active ? color.accent : color.surfaceSunken}
-      />
-      <Text
-        {...type.label}
-        lineHeight={TAB_H}
-        maxWidth={w}
-        x={-w / 2 + TAB_PAD_X}
-        y={-TAB_H / 2}
-        fill={active ? color.accentInk : color.inkMuted}
-      >
-        {label}
-      </Text>
-    </g>
+      {label}
+    </Pill>
   );
 }
 
@@ -299,7 +282,7 @@ function BodyBlock({
   );
   // eyebrow + illustrated paragraph, themselves stacked by rendered bounds.
   return (
-    <Stack gap={space.md}>
+    <Flow gap={space.md}>
       <Text {...type.heading} maxWidth={contentW} fill={color.inkSubtle}>
         {eyebrow}
       </Text>
@@ -318,7 +301,7 @@ function BodyBlock({
           {body}
         </Text>
       </g>
-    </Stack>
+    </Flow>
   );
 }
 
@@ -366,12 +349,15 @@ function SettingRow({
       aria-label={row.title}
     >
       <Frame.Slot name="label">
-        <Text {...type.title} lineHeight={23} maxWidth="100%" fill={color.ink}>
-          {row.title}
-        </Text>
-        <Text {...type.caption} maxWidth="100%" y={25} fill={color.inkSubtle}>
-          {row.caption}
-        </Text>
+        {/* Title + caption stacked by measured bounds — no manual y-offset. */}
+        <Flow gap={space.xs}>
+          <Text {...type.title} maxWidth="100%" fill={color.ink}>
+            {row.title}
+          </Text>
+          <Text {...type.caption} maxWidth="100%" fill={color.inkSubtle}>
+            {row.caption}
+          </Text>
+        </Flow>
       </Frame.Slot>
       <Frame.Slot name="control">
         {row.kind === "toggle" ? (
