@@ -43,6 +43,9 @@ import proceduralPathSrc from "./06-procedural-path/ProceduralPath.tsx?raw";
 import proceduralShapeSrc from "./06-procedural-path/proceduralShape.ts?raw";
 import proceduralControlsSrc from "./06-procedural-path/Controls.tsx?raw";
 import proceduralStateSrc from "./06-procedural-path/state.ts?raw";
+import contouredMenuSrc from "./06-procedural-path/ContouredMenu.tsx?raw";
+import menuShapeSrc from "./06-procedural-path/menuShape.ts?raw";
+import useTweenedNumbersSrc from "./06-procedural-path/useTweenedNumbers.ts?raw";
 import curveSliderDemoSrc from "./07-curve-slider/demo.tsx?raw";
 import designSurfaceDemoSrc from "./08-design-surface/demo.tsx?raw";
 
@@ -142,14 +145,17 @@ export const DEMOS: DemoEntry[] = [
     id: "06-procedural-path",
     title: "6 · Procedural path with live reflow",
     blurb:
-      "Sliders drive a closed-form left-edge wave; text wraps the exact contour the path draws.",
+      "Version A: sliders drive a closed-form left-edge wave; text wraps the exact contour the path draws. Version B: a vertical menu whose silhouette shelves to each item's measured width — click to activate and watch the outline morph.",
     proves:
-      "One closed-form function feeding both ShapeGenerator and Text's intrusionAt — slider input morphs the silhouette and reflows the paragraph on one frame.",
+      "One source of truth (a closed-form curve, or the array of measured row widths) feeding both ShapeGenerator and the layout consumer — geometry and layout stay in lockstep through every frame.",
     Component: ProceduralPathDemo,
     sources: [
       { name: "demo.tsx", code: proceduralDemoSrc },
       { name: "ProceduralPath.tsx", code: proceduralPathSrc },
       { name: "proceduralShape.ts", code: proceduralShapeSrc },
+      { name: "ContouredMenu.tsx", code: contouredMenuSrc },
+      { name: "menuShape.ts", code: menuShapeSrc },
+      { name: "useTweenedNumbers.ts", code: useTweenedNumbersSrc },
       { name: "Controls.tsx", code: proceduralControlsSrc },
       { name: "state.ts", code: proceduralStateSrc },
     ],
