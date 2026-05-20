@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { arc, line, quadratic, distributeAlong } from "../src/layout/walkPath";
+import {
+  arc,
+  line,
+  polyline,
+  quadratic,
+  distributeAlong,
+} from "../src/layout/walkPath";
 
 describe("line", () => {
   const l = line({ x1: 0, y1: 0, x2: 30, y2: 40 });
@@ -85,6 +91,42 @@ describe("quadratic", () => {
 
   it("emits a Q-command path", () => {
     expect(straight.toPathData()).toMatch(/^M .* Q /);
+  });
+});
+
+describe("polyline", () => {
+  // An L-shape: right 30, then down 40. Total length 70.
+  const L = polyline({
+    points: [
+      { x: 0, y: 0 },
+      { x: 30, y: 0 },
+      { x: 30, y: 40 },
+    ],
+  });
+
+  it("sums segment lengths", () => {
+    expect(L.length).toBe(70);
+  });
+
+  it("walks segments in order", () => {
+    expect(L.pointAtLength(0)).toEqual({ x: 0, y: 0 });
+    expect(L.pointAtLength(15)).toEqual({ x: 15, y: 0 });
+    expect(L.pointAtLength(30)).toEqual({ x: 30, y: 0 });
+    expect(L.pointAtLength(50)).toEqual({ x: 30, y: 20 });
+    expect(L.pointAtLength(70)).toEqual({ x: 30, y: 40 });
+  });
+
+  it("returns the segment's tangent (no smoothing across corners)", () => {
+    expect(L.tangentAtLength(10)).toBeCloseTo(0); // along +x
+    expect(L.tangentAtLength(60)).toBeCloseTo(Math.PI / 2); // along +y
+  });
+
+  it("emits an M…L path through the vertices", () => {
+    expect(L.toPathData()).toBe("M 0 0 L 30 0 L 30 40");
+  });
+
+  it("rejects fewer than two points", () => {
+    expect(() => polyline({ points: [{ x: 0, y: 0 }] })).toThrow();
   });
 });
 

@@ -31,6 +31,10 @@ export type CornerBlobOptions = {
   height?: number;
   /** Outline sample count — higher is smoother. */
   samples?: number;
+  /** Lobe depth — how deeply the silhouette is carved inward (0…1). */
+  amp?: number;
+  /** Lobe frequency — how many carved waves run down the silhouette. */
+  bumps?: number;
 };
 
 const round = (n: number) => Math.round(n * 100) / 100;
@@ -42,8 +46,8 @@ export function cornerBlob(opts: CornerBlobOptions = {}): CornerFloat {
 
   // Lobe depth and frequency. A non-integer frequency keeps the silhouette
   // from looking mechanically symmetric.
-  const AMP = 0.22;
-  const BUMPS = 3.4;
+  const AMP = opts.amp ?? 0.22;
+  const BUMPS = opts.bumps ?? 3.4;
 
   /**
    * The blob's right edge: its x at vertical fraction t ∈ [0, 1].

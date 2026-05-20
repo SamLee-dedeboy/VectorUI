@@ -9,7 +9,12 @@
 export { VectorUIRoot } from "./components/VectorUIRoot";
 export type { VectorUIRootProps } from "./components/VectorUIRoot";
 export { Text } from "./components/Text";
-export type { TextProps, TextMeasurement, FlowAround } from "./components/Text";
+export type {
+  TextProps,
+  TextMeasurement,
+  FlowAround,
+  OverflowWrap,
+} from "./components/Text";
 export { Frame } from "./components/Frame";
 export type {
   FrameProps,
@@ -59,12 +64,19 @@ export {
 export type { CoordinateScale } from "./layout/coordinateScale";
 export { useSlot } from "./layout/slot";
 export type { SlotInfo } from "./layout/slot";
-export { arc, line, quadratic, distributeAlong } from "./layout/walkPath";
+export {
+  arc,
+  line,
+  polyline,
+  quadratic,
+  distributeAlong,
+} from "./layout/walkPath";
 export type {
   Curve,
   CurvePoint,
   ArcSpec,
   LineSpec,
+  PolylineSpec,
   QuadraticSpec,
   Distribute,
   DistributeOptions,

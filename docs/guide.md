@@ -65,7 +65,7 @@ layout adapts by reading [`useViewportWidth()`](#11-hooks--layout-utilities).
 
 ```bash
 npm install
-npm run dev      # dev server at http://localhost:5180
+npm run dev      # dev server at http://localhost:5181
 ```
 
 A minimal scene:
@@ -149,8 +149,10 @@ constant size as the viewBox scales.
 
 Spread a `type` token straight in: `<Text {...tokens.type.body} maxWidth="100%">`.
 
-`FlowAround` = `{ intrusionAt: (yTop, yBottom) => number; gap?: number }` — the
-shape reports, in layout units, how far it reaches into each line band.
+`FlowAround` = `{ intrusionAt, rightIntrusionAt?, gap? }` — each `intrusionAt`
+reports, in layout units, how far the shape reaches into a line band from one
+edge. Supply `rightIntrusionAt` as well and the text wraps on both sides at
+once (e.g. poured through an archway).
 
 ---
 
@@ -314,7 +316,7 @@ Thin SVG wrappers, for escape-hatch rendering:
 | `tokens.space` | numbers, layout units | `xs:4 … xxxl:48` |
 | `tokens.type` | `{ font, lineHeight, letterSpacing? }` | `display`, `title`, `heading`, `body`, `caption`, `label` |
 | `tokens.motion` | durations + easings | `duration.base`, `easing.standard`, `reduced` |
-| `tokens.shapes` | `(w, h, morph?) => string` | `blob`, `rectRounded`, `sharp`, `pill`, `tabBackdrop` |
+| `tokens.shapes` | `(w, h, morph?) => string` | `blob`, `rectRounded`, `sharp`, `leaf`, `pill`, `tabBackdrop` |
 | `tokens.filters` | `url(#…)` refs | `softShadow`, `glow`, `etched` |
 
 Spread a type token onto `<Text>`: `<Text {...tokens.type.title}>`. Colors are
@@ -456,7 +458,7 @@ Honest list — useful when assessing the API:
 ## 14. Build & test
 
 ```bash
-npm run dev      # dev server at http://localhost:5180
+npm run dev      # dev server at http://localhost:5181
 npm run build    # type-check (tsc) + production build
 npm test         # vitest — pure layout/shape functions
 ```

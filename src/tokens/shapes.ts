@@ -73,6 +73,19 @@ export function sharp(w: number, h: number): string {
   return quad(w, h, { tl: r, tr: r, br: r, bl: r }, 0);
 }
 
+/**
+ * A leaf: two opposite corners drawn to a soft point, the other two swept
+ * into a generous quarter-round. `morph` ∈ [0, 1] relaxes the points back
+ * toward an ordinary rounded rectangle. Shares the eight-quadratic structure,
+ * so it morphs cleanly against the rest of the family.
+ */
+export function leaf(w: number, h: number, morph = 0): string {
+  const m = clamp01(morph);
+  const big = Math.min(w, h) * 0.5 * (1 - m * 0.82);
+  const point = Math.min(w, h) * 0.04 * (1 + m * 5);
+  return quad(w, h, { tl: big, tr: point, br: big, bl: point }, 0);
+}
+
 /** A pill: a rectangle with fully rounded ends. */
 export function pill(w: number, h: number): string {
   const r = h / 2;
@@ -90,6 +103,7 @@ export const shapes = {
   blob,
   rectRounded,
   sharp,
+  leaf,
   pill,
   tabBackdrop,
 } as const;

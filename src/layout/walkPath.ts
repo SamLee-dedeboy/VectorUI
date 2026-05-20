@@ -108,6 +108,65 @@ export function arc({ cx, cy, radius, startAngle, endAngle }: ArcSpec): Curve {
   };
 }
 
+// --- polyline -------------------------------------------------------------
+
+export type PolylineSpec = {
+  /** Ordered vertices. Must have at least two. */
+  points: CurvePoint[];
+};
+
+/**
+ * A piecewise-linear curve through `points` — the building block for any
+ * curve sampled as a sequence of vertices (a sine wave, a square wave, a
+ * polygon edge, an SVG path traced offline). Arc-length is exact; the tangent
+ * is the segment angle, with jumps at the corners (use `orient="upright"`
+ * with `PathFlow` when those jumps would spin chips at the kinks).
+ */
+export function polyline({ points }: PolylineSpec): Curve {
+  if (points.length < 2) {
+    throw new Error("polyline needs at least two points");
+  }
+
+  const cumulative: number[] = [0];
+  const tangents: number[] = [];
+  for (let i = 1; i < points.length; i++) {
+    const dx = points[i].x - points[i - 1].x;
+    const dy = points[i].y - points[i - 1].y;
+    cumulative.push(cumulative[i - 1] + Math.hypot(dx, dy));
+    tangents.push(Math.atan2(dy, dx));
+  }
+  const length = cumulative[cumulative.length - 1];
+
+  const segmentAt = (s: number) => {
+    const target = clamp(s, 0, length);
+    let i = 0;
+    while (i < tangents.length - 1 && cumulative[i + 1] < target) i++;
+    return i;
+  };
+
+  return {
+    length,
+    pointAtLength(s) {
+      const i = segmentAt(s);
+      const segLen = cumulative[i + 1] - cumulative[i];
+      const t = segLen > 0 ? (clamp(s, 0, length) - cumulative[i]) / segLen : 0;
+      return {
+        x: points[i].x + (points[i + 1].x - points[i].x) * t,
+        y: points[i].y + (points[i + 1].y - points[i].y) * t,
+      };
+    },
+    tangentAtLength(s) {
+      return tangents[segmentAt(s)];
+    },
+    toPathData() {
+      return (
+        "M " +
+        points.map((p) => `${round(p.x)} ${round(p.y)}`).join(" L ")
+      );
+    },
+  };
+}
+
 // --- quadratic Bézier -----------------------------------------------------
 
 export type QuadraticSpec = {

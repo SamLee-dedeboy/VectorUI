@@ -34,7 +34,7 @@ reconciles them and the library applies it — consumer code should not divide b
 ## Commands
 
 ```bash
-npm run dev      # dev server at http://localhost:5180
+npm run dev      # dev server at http://localhost:5181
 npm run build    # tsc + production build
 npm test         # vitest
 ```

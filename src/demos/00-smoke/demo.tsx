@@ -9,6 +9,29 @@ import { ScaleReadout } from "./ScaleReadout";
  * Each VectorUIRoot has a different viewBox and rendered size, so the live
  * layout↔pixel scale the component reports differs between them.
  */
+
+/**
+ * A star/burst polygon centred at (cx, cy): `spikes` points, the radius
+ * alternating between `outer` and `inner`. Returned as plain SVG path data.
+ */
+function star(
+  cx: number,
+  cy: number,
+  spikes: number,
+  outer: number,
+  inner: number,
+): string {
+  const pts: string[] = [];
+  for (let i = 0; i < spikes * 2; i++) {
+    const a = -Math.PI / 2 + (i * Math.PI) / spikes;
+    const r = i % 2 === 0 ? outer : inner;
+    pts.push(
+      `${(cx + r * Math.cos(a)).toFixed(1)} ${(cy + r * Math.sin(a)).toFixed(1)}`,
+    );
+  }
+  return `M ${pts.join(" L ")} Z`;
+}
+
 export function Demo() {
   return (
     <div>
@@ -29,13 +52,12 @@ export function Demo() {
         }}
       >
         <Path
-          d="M 40 100 q 60 -90 160 0 q 100 90 160 0"
+          d={star(200, 100, 5, 82, 34)}
           fill="none"
           stroke="#1f8a5c"
           strokeWidth={3}
+          strokeLinejoin="round"
         />
-        <circle cx={40} cy={100} r={7} fill="#1f8a5c" />
-        <circle cx={360} cy={100} r={7} fill="#1f8a5c" />
         <ScaleReadout />
       </VectorUIRoot>
 
@@ -51,13 +73,12 @@ export function Demo() {
           background: "#1f2733",
         }}
       >
-        <circle
-          cx={150}
-          cy={130}
-          r={96}
+        <Path
+          d={star(150, 130, 12, 98, 80)}
           fill="none"
           stroke="#7fd6ad"
           strokeWidth={3}
+          strokeLinejoin="round"
         />
         <ScaleReadout fill="#eaf3ee" fontSize={13} />
       </VectorUIRoot>

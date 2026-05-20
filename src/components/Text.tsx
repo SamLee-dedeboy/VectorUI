@@ -3,18 +3,27 @@ import { TextLine } from "../svg/TextLine";
 import { useCoordinateScale } from "../layout/coordinateScale";
 import { useSlot } from "../layout/slot";
 import { useFontsReady } from "../layout/fonts";
-import { layoutParagraph, layoutFlowParagraph } from "../layout/measureText";
+import {
+  layoutParagraph,
+  layoutFlowParagraph,
+  type OverflowWrap,
+} from "../layout/measureText";
+
+export type { OverflowWrap };
 
 /**
  * A floated shape for text to wrap around (SPEC §6.3, `flowAround`).
  *
  * `intrusionAt` answers, in LAYOUT UNITS, how far the float reaches in from
  * the left edge of the text column over a vertical band — with coordinates
- * relative to this Text block's own top-left. The Text component converts to
- * pixel space internally.
+ * relative to this Text block's own top-left. `rightIntrusionAt` does the same
+ * from the right edge, for a shape (such as an archway) that wraps text on
+ * both sides. The Text component converts to pixel space internally.
  */
 export type FlowAround = {
   intrusionAt: (yTopLayout: number, yBottomLayout: number) => number;
+  /** Right-edge intrusion, for a shape that wraps text on both sides. */
+  rightIntrusionAt?: (yTopLayout: number, yBottomLayout: number) => number;
   /** Gap between the float's edge and the text, in layout units. */
   gap?: number;
 };
@@ -54,6 +63,14 @@ export type TextProps = Omit<
   letterSpacing?: number;
   /** Wrap text around a floated shape instead of a plain rectangle. */
   flowAround?: FlowAround;
+  /**
+   * How long words are handled when they don't fit on a line — matches CSS
+   * `overflow-wrap`. Defaults to `"break-word"` (split a word that overflows).
+   * Set `"normal"` to keep words whole and let them spill past the contour —
+   * useful when text is poured through a shape that pinches narrower than a
+   * single word.
+   */
+  overflowWrap?: OverflowWrap;
   /** Reports the wrapped block size (layout units) once measured. */
   onMeasure?: (size: TextMeasurement) => void;
 };
@@ -89,6 +106,7 @@ export function Text({
   fill = "currentColor",
   letterSpacing,
   flowAround,
+  overflowWrap,
   onMeasure,
   ...groupProps
 }: TextProps) {
@@ -113,10 +131,18 @@ export function Text({
           columnWidthPx: maxWidthPx,
           lineHeightPx: lineHeight,
           letterSpacingPx: letterSpacing,
+          overflowWrap,
           gapPx: gap * scale,
-          // Convert the float's layout-unit profile into pixel space.
+          // Convert the float's layout-unit profile(s) into pixel space.
           intrusionAtPx: (yTopPx, yBottomPx) =>
             flowAround.intrusionAt(yTopPx / scale, yBottomPx / scale) * scale,
+          rightIntrusionAtPx: flowAround.rightIntrusionAt
+            ? (yTopPx, yBottomPx) =>
+                flowAround.rightIntrusionAt!(
+                  yTopPx / scale,
+                  yBottomPx / scale,
+                ) * scale
+            : undefined,
         });
       }
       return layoutParagraph({
@@ -125,10 +151,11 @@ export function Text({
         maxWidthPx,
         lineHeightPx: lineHeight,
         letterSpacingPx: letterSpacing,
+        overflowWrap,
       });
     },
     // fontsReady is a measurement dependency: caches flush when it flips.
-    [children, font, maxWidthPx, lineHeight, letterSpacing, fontsReady, flowAround, scale],
+    [children, font, maxWidthPx, lineHeight, letterSpacing, fontsReady, flowAround, overflowWrap, scale],
   );
 
   // Report block size back to a parent (e.g. a height="auto" Frame later).
