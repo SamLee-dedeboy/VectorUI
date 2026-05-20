@@ -2,8 +2,6 @@ import type { ComponentType } from "react";
 
 // Each demo is a `demo.tsx` page (controls + scene) that renders a reusable
 // component from the same folder.
-import { Demo as SmokeDemo } from "./00-smoke/demo";
-import { Demo as TextFidelityDemo } from "./text-fidelity/demo";
 import { Demo as TextFlowDemo } from "./01-text-flow/demo";
 import { Demo as CardDemo } from "./02-card/demo";
 import { Demo as RadialMenuDemo } from "./03-radial-menu/demo";
@@ -15,11 +13,6 @@ import { Demo as DesignSurfaceDemo } from "./08-design-surface/demo";
 
 // Demo source, imported verbatim via Vite's `?raw` so each demo page can show
 // the exact code that produced it (the "Code" tab) — demo.tsx first.
-import smokeDemoSrc from "./00-smoke/demo.tsx?raw";
-import scaleReadoutSrc from "./00-smoke/ScaleReadout.tsx?raw";
-import textFidelityDemoSrc from "./text-fidelity/demo.tsx?raw";
-import textComparisonSrc from "./text-fidelity/TextComparison.tsx?raw";
-import samplesSrc from "./text-fidelity/samples.ts?raw";
 import textFlowDemoSrc from "./01-text-flow/demo.tsx?raw";
 import textFlowSrc from "./01-text-flow/TextFlow.tsx?raw";
 import cornerBlobSrc from "./01-text-flow/cornerBlob.ts?raw";
@@ -69,31 +62,6 @@ export type DemoEntry = {
 
 /** Demos that exist today. */
 export const DEMOS: DemoEntry[] = [
-  {
-    id: "smoke",
-    title: "0 · Root & coordinate scale",
-    blurb:
-      "A trivial SVG scene plus a live readout of the layout↔pixel scale. Resize the window to watch it update.",
-    proves: "Steps 1–2: VectorUIRoot, useCoordinateScale, ResizeObserver.",
-    Component: SmokeDemo,
-    sources: [
-      { name: "demo.tsx", code: smokeDemoSrc },
-      { name: "ScaleReadout.tsx", code: scaleReadoutSrc },
-    ],
-  },
-  {
-    id: "text-fidelity",
-    title: "Text fidelity — risk gate",
-    blurb:
-      "pretext-driven SVG text vs. the browser's native line breaker, side by side and as an overlay.",
-    proves: "Step 3: the Text primitive. The SPEC §14 risk gate.",
-    Component: TextFidelityDemo,
-    sources: [
-      { name: "demo.tsx", code: textFidelityDemoSrc },
-      { name: "TextComparison.tsx", code: textComparisonSrc },
-      { name: "samples.ts", code: samplesSrc },
-    ],
-  },
   {
     id: "01-text-flow",
     title: "1 · Text flow around a shape",
