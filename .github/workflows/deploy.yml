@@ -1,0 +1,55 @@
+# Build the Vite site on every push to `main` and deploy `dist/` to
+# GitHub Pages. Mirrors the workflow recommended by the Vite static-deploy
+# guide: https://vite.dev/guide/static-deploy.html#github-pages
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  # Allow re-running the deploy manually without a new commit.
+  workflow_dispatch:
+
+# The Pages deployment needs these scopes; nothing else does.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Only one Pages deploy in flight at a time — but don't cancel a deploy
+# that's already running; let it finish so we never publish a half-baked
+# build.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      # tsc + vite build. Failing tsc fails the deploy.
+      - run: npm run build
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
