@@ -5,7 +5,7 @@ import react from "@vitejs/plugin-react";
 // gives one route per demo without pulling in react-router.
 export default defineConfig({
   plugins: [react()],
-  server: { port: 5180, strictPort: true },
+  server: { port: 5181, strictPort: true },
   test: {
     environment: "jsdom",
     include: ["tests/**/*.test.ts"],

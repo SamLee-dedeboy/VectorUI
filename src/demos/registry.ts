@@ -8,7 +8,7 @@ import { Demo as TextFlowDemo } from "./01-text-flow/demo";
 import { Demo as CardDemo } from "./02-card/demo";
 import { Demo as RadialMenuDemo } from "./03-radial-menu/demo";
 import { Demo as BreakpointMorphDemo } from "./04-breakpoint-morph/demo";
-import { Demo as SettingsDemo } from "./05-settings/demo";
+import { Demo as LayoutPlaygroundDemo } from "./05-layout-playground/demo";
 
 // Demo source, imported verbatim via Vite's `?raw` so each demo page can show
 // the exact code that produced it (the "Code" tab) — demo.tsx first.
@@ -36,9 +36,12 @@ import iconSrc from "./03-radial-menu/Icon.tsx?raw";
 import breakpointMorphDemoSrc from "./04-breakpoint-morph/demo.tsx?raw";
 import morphCardSrc from "./04-breakpoint-morph/MorphCard.tsx?raw";
 import morphShapesSrc from "./04-breakpoint-morph/shapes.ts?raw";
-import settingsDemoSrc from "./05-settings/demo.tsx?raw";
-import settingsPanelSrc from "./05-settings/SettingsPanel.tsx?raw";
-import rowShapeSrc from "./05-settings/rowShape.ts?raw";
+import layoutPlaygroundDemoSrc from "./05-layout-playground/demo.tsx?raw";
+import layoutPlaygroundSceneSrc from "./05-layout-playground/Playground.tsx?raw";
+import layoutPlaygroundControlsSrc from "./05-layout-playground/Controls.tsx?raw";
+import layoutPlaygroundInspectSrc from "./05-layout-playground/InspectOverlay.tsx?raw";
+import layoutPlaygroundAccentSrc from "./05-layout-playground/accent.ts?raw";
+import layoutPlaygroundStateSrc from "./05-layout-playground/state.ts?raw";
 
 /** One source file shown in a demo's Code tab. */
 export type SourceFile = { name: string; code: string };
@@ -141,16 +144,20 @@ export const DEMOS: DemoEntry[] = [
     ],
   },
   {
-    id: "05-settings",
-    title: "5 · Composed settings page",
+    id: "05-layout-playground",
+    title: "5 · Layout playground",
     blurb:
-      "Curved tabs, a paragraph flowing around an illustration, chamfered rows.",
-    proves: "Step 9: every primitive composed; design tokens.",
-    Component: SettingsDemo,
+      "One composed surface, six knobs. Every input targets a single layout-system capability — drag the slider to drive container-query reflow, cycle the distribute strategy, watch the Frame shrink-wrap.",
+    proves:
+      "Step 9: every primitive composed live; container queries; Frame shrink-wrap; PathFlow distribute strategies; dynamic Flow.",
+    Component: LayoutPlaygroundDemo,
     sources: [
-      { name: "demo.tsx", code: settingsDemoSrc },
-      { name: "SettingsPanel.tsx", code: settingsPanelSrc },
-      { name: "rowShape.ts", code: rowShapeSrc },
+      { name: "demo.tsx", code: layoutPlaygroundDemoSrc },
+      { name: "Playground.tsx", code: layoutPlaygroundSceneSrc },
+      { name: "Controls.tsx", code: layoutPlaygroundControlsSrc },
+      { name: "InspectOverlay.tsx", code: layoutPlaygroundInspectSrc },
+      { name: "accent.ts", code: layoutPlaygroundAccentSrc },
+      { name: "state.ts", code: layoutPlaygroundStateSrc },
     ],
   },
 ];

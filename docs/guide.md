@@ -65,7 +65,7 @@ layout adapts by reading [`useViewportWidth()`](#11-hooks--layout-utilities).
 
 ```bash
 npm install
-npm run dev      # dev server at http://localhost:5180
+npm run dev      # dev server at http://localhost:5181
 ```
 
 A minimal scene:
@@ -458,7 +458,7 @@ Honest list — useful when assessing the API:
 ## 14. Build & test
 
 ```bash
-npm run dev      # dev server at http://localhost:5180
+npm run dev      # dev server at http://localhost:5181
 npm run build    # type-check (tsc) + production build
 npm test         # vitest — pure layout/shape functions
 ```

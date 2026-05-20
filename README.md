@@ -38,11 +38,14 @@ were passed, and all five §11 demos are live.
 
 - **Demo 3** animates between the arc and the line — the curve is a quadratic
   Bézier whose control points are tweened, so items slide and rotate smoothly.
-- **Demo 5** is interactive: tabs switch content, toggles flip with an
-  animated knob, value rows cycle.
+- **Demo 5** is interactive: HTML controls drive a single composed scene so
+  the user can see the layout system respond to inputs in real time (container
+  width, child count, distribute strategy, body length, footer count, inspect
+  overlay).
 - **`VectorUIRoot` `width="auto"`** — opts a scene out of uniform scaling so it
-  reflows to the real width (`scale` stays 1) instead of shrinking. Demo 5 uses
-  it; this is what stops text colliding at narrow widths.
+  reflows to the real width (`scale` stays 1) instead of shrinking. Demo 5
+  uses it; combined with a `resize: horizontal` wrapper it doubles as the
+  demo's container-query mechanic.
 - **Unified measurement** — `useMeasuredBounds` (`getBBox`) is the one
   rendered-bounds primitive `Frame.Slot`, `Flow` and `PathFlow` all build on,
   so a layout always clears a child taller than expected.
@@ -74,7 +77,7 @@ guessed fallback heights, zero `onMeasure`/`onLayout` wiring.
 
 ```bash
 npm install
-npm run dev      # dev server on http://localhost:5180
+npm run dev      # dev server on http://localhost:5181
 npm run build    # type-check + production build
 npm test         # vitest (layout/measurement pure functions)
 ```

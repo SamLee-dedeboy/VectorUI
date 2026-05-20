@@ -1,7 +1,11 @@
 import type { SVGProps } from "react";
 import { Path } from "../svg/Path";
 import { Text } from "./Text";
-import { useNaturalTextWidth } from "../layout/textWidth";
+import {
+  useActualTextMetrics,
+  useNaturalTextWidth,
+} from "../layout/textWidth";
+import { getFontMetrics } from "../layout/measureText";
 import { tokens, type TextStyle } from "../tokens";
 
 /**
@@ -44,24 +48,51 @@ export function Pill({
   origin = "top-left",
   ...gProps
 }: PillProps) {
-  const labelWidth = useNaturalTextWidth(children, textStyle.font);
+  const labelWidth = useNaturalTextWidth(
+    children,
+    textStyle.font,
+    textStyle.letterSpacing,
+  );
   const width = labelWidth + paddingX * 2;
   const ox = origin === "center" ? -width / 2 : 0;
   const oy = origin === "center" ? -height / 2 : 0;
+
+  // Vertical centering by CAP HEIGHT, not font box.
+  //
+  // `Text` defaults to CSS-line-box centering — `halfLeading + ascentPx` —
+  // which is correct for a paragraph but leaves a single-line label *visibly
+  // off-centre* inside its shape: Inter's font bounding box reserves ~13px
+  // above the baseline (room for diacritics) and ~3px below, so centring
+  // the asymmetric box drops the ink ~0.3-1.5px low.
+  //
+  // The standard button-typography convention is to centre the CAP HEIGHT
+  // rather than the whole ink box — descenders then dip *below* the visual
+  // centre, exactly how a CSS button renders text. The reference is a fixed
+  // capital-only string (`"H"`), NOT the pill's actual label, so every pill
+  // in a row shares one baseline: "Save" and "Library" align at the cap-top
+  // and baseline, and Library's "y" descender simply extends below.
+  const fontBox = getFontMetrics(textStyle.font);
+  const cap = useActualTextMetrics("H", textStyle.font);
+  // Both formulas yield a baseline position in the *pixel* space `Text`
+  // works in. Their difference is the px (= layout-unit at scale 1) shift.
+  const baselineOffsetPx =
+    (cap.actAscPx - cap.actDescPx - fontBox.ascentPx + fontBox.descentPx) / 2;
 
   return (
     <g {...gProps}>
       <g transform={ox || oy ? `translate(${ox} ${oy})` : undefined}>
         <Path d={tokens.shapes.pill(width, height)} fill={fill} />
-        {/* Setting lineHeight to the pill height vertically-centers the single
-            line via half-leading; the label is left-aligned at paddingX,
-            which — since width = label + 2·paddingX — centers it too. */}
+        {/* The label is left-aligned at paddingX (which centres it
+            horizontally since width = label + 2·paddingX). The `y` offset
+            converts font-box centring into ink-box centring — see the
+            comment above. */}
         <Text
           font={textStyle.font}
           lineHeight={height}
           letterSpacing={textStyle.letterSpacing}
           maxWidth={width}
           x={paddingX}
+          y={baselineOffsetPx}
           fill={textFill}
         >
           {children}
