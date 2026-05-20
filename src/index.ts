@@ -33,6 +33,10 @@ export { Flow } from "./components/Flow";
 export type { FlowProps, FlowDirection, FlowAlign } from "./components/Flow";
 export { Pill } from "./components/Pill";
 export type { PillProps } from "./components/Pill";
+export { CurveSlider } from "./components/CurveSlider";
+export type { CurveSliderProps } from "./components/CurveSlider";
+export { DesignSurface } from "./components/DesignSurface";
+export type { DesignSurfaceProps } from "./components/DesignSurface";
 
 export { TokenDefs } from "./components/TokenDefs";
 
@@ -70,16 +74,21 @@ export {
   polyline,
   quadratic,
   distributeAlong,
+  pointAt,
+  nearestPointOnCurve,
 } from "./layout/walkPath";
 export type {
   Curve,
   CurvePoint,
+  CurveSample,
   ArcSpec,
   LineSpec,
   PolylineSpec,
   QuadraticSpec,
   Distribute,
   DistributeOptions,
+  NearestPoint,
+  NearestPointOptions,
 } from "./layout/walkPath";
 export {
   layoutParagraph,
@@ -106,6 +115,16 @@ export type {
   FitSize,
 } from "./layout/childBounds";
 export { usePrefersReducedMotion } from "./layout/motion";
+export {
+  EditModeContext,
+  useEditMode,
+  useEditHandle,
+  createEditRegistry,
+} from "./layout/editHandles";
+export type {
+  EditHandle,
+  EditModeContextValue,
+} from "./layout/editHandles";
 export { morphPath, tokenizePath } from "./layout/morphPath";
 export {
   useViewportWidth,

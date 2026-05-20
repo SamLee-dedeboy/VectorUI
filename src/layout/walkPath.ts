@@ -89,16 +89,33 @@ export function arc({ cx, cy, radius, startAngle, endAngle }: ArcSpec): Curve {
       return angleAt(s) + tangentOffset;
     },
     toPathData() {
+      const sweepFlag = sweep >= 0 ? 1 : 0;
       const p0 = {
         x: cx + radius * Math.cos(startAngle),
         y: cy + radius * Math.sin(startAngle),
       };
+      // A full circle starts and ends at the same point, so a single
+      // A-command (which draws from the current point to its endpoint)
+      // degenerates. Split into two half-sweeps via an intermediate point.
+      if (Math.abs(sweep) >= 2 * Math.PI - 1e-9) {
+        const midAngle = startAngle + sweep / 2;
+        const pm = {
+          x: cx + radius * Math.cos(midAngle),
+          y: cy + radius * Math.sin(midAngle),
+        };
+        return (
+          `M ${round(p0.x)} ${round(p0.y)} ` +
+          `A ${round(radius)} ${round(radius)} 0 0 ${sweepFlag} ` +
+          `${round(pm.x)} ${round(pm.y)} ` +
+          `A ${round(radius)} ${round(radius)} 0 0 ${sweepFlag} ` +
+          `${round(p0.x)} ${round(p0.y)}`
+        );
+      }
       const p1 = {
         x: cx + radius * Math.cos(endAngle),
         y: cy + radius * Math.sin(endAngle),
       };
       const largeArc = Math.abs(sweep) > Math.PI ? 1 : 0;
-      const sweepFlag = sweep >= 0 ? 1 : 0;
       return (
         `M ${round(p0.x)} ${round(p0.y)} ` +
         `A ${round(radius)} ${round(radius)} 0 ${largeArc} ${sweepFlag} ` +
@@ -232,6 +249,122 @@ export function quadratic({ p0, control, p1 }: QuadraticSpec): Curve {
     toPathData: () =>
       `M ${round(p0.x)} ${round(p0.y)} ` +
       `Q ${round(control.x)} ${round(control.y)} ${round(p1.x)} ${round(p1.y)}`,
+  };
+}
+
+// --- sampling -------------------------------------------------------------
+
+/**
+ * A point on a curve with the parameters that produced it. `s` is arc length,
+ * `t` is its 0..1 normalisation (`t = s / length`). `tangent` is in radians.
+ */
+export type CurveSample = {
+  s: number;
+  t: number;
+  point: CurvePoint;
+  tangent: number;
+};
+
+/**
+ * Convenience over `pointAtLength`/`tangentAtLength` for callers that think in
+ * 0..1 (sliders, edit handles). `t` is clamped.
+ */
+export function pointAt(curve: Curve, t: number): CurveSample {
+  const ct = clamp(t, 0, 1);
+  const s = ct * curve.length;
+  return {
+    s,
+    t: ct,
+    point: curve.pointAtLength(s),
+    tangent: curve.tangentAtLength(s),
+  };
+}
+
+/** Result of `nearestPointOnCurve`. */
+export type NearestPoint = {
+  /** Arc length from the start of the curve to the nearest point. */
+  s: number;
+  /** `s / curve.length`, in [0, 1]. Zero when the curve has zero length. */
+  t: number;
+  /** The closest point on the curve. */
+  point: CurvePoint;
+  /** Straight-line distance from `target` to `point`. */
+  distance: number;
+};
+
+export type NearestPointOptions = {
+  /** Coarse samples for the initial scan. Default 64 — matches the quadratic
+   *  arc-length table. */
+  samples?: number;
+  /** Ternary-search refinement steps after the coarse scan. Default 12 —
+   *  ~1/3^12 of a sample window, well under a sub-pixel for any sane curve. */
+  refineSteps?: number;
+};
+
+/**
+ * Find the point on `curve` closest to `target`. The arc-length-parameterised
+ * inverse of `pointAtLength`: pointer-XY → `t`, what `CurveSlider` and any
+ * drag-along-curve interaction needs.
+ *
+ * Strategy: a uniform coarse sweep finds the nearest sample, then ternary
+ * search refines within ±one sample step. This is robust for the kinks in
+ * `polyline` (where calculus-based methods misbehave) and accurate enough for
+ * a hit test on any of the built-in curves.
+ */
+export function nearestPointOnCurve(
+  curve: Curve,
+  target: CurvePoint,
+  options: NearestPointOptions = {},
+): NearestPoint {
+  const samples = Math.max(2, options.samples ?? 64);
+  const refineSteps = Math.max(0, options.refineSteps ?? 12);
+  const L = curve.length;
+
+  if (L === 0) {
+    const point = curve.pointAtLength(0);
+    return {
+      s: 0,
+      t: 0,
+      point,
+      distance: Math.hypot(target.x - point.x, target.y - point.y),
+    };
+  }
+
+  // Coarse pass — sample uniformly in arc length and pick the closest.
+  let bestS = 0;
+  let bestD2 = Infinity;
+  for (let i = 0; i <= samples; i++) {
+    const s = (L * i) / samples;
+    const p = curve.pointAtLength(s);
+    const d2 = (target.x - p.x) ** 2 + (target.y - p.y) ** 2;
+    if (d2 < bestD2) {
+      bestD2 = d2;
+      bestS = s;
+    }
+  }
+
+  // Refine within ±one sample step via ternary search.
+  const step = L / samples;
+  let lo = Math.max(0, bestS - step);
+  let hi = Math.min(L, bestS + step);
+  for (let i = 0; i < refineSteps; i++) {
+    const third = (hi - lo) / 3;
+    const m1 = lo + third;
+    const m2 = hi - third;
+    const p1 = curve.pointAtLength(m1);
+    const p2 = curve.pointAtLength(m2);
+    const d1 = (target.x - p1.x) ** 2 + (target.y - p1.y) ** 2;
+    const d2 = (target.x - p2.x) ** 2 + (target.y - p2.y) ** 2;
+    if (d1 < d2) hi = m2;
+    else lo = m1;
+  }
+  const s = (lo + hi) / 2;
+  const point = curve.pointAtLength(s);
+  return {
+    s,
+    t: s / L,
+    point,
+    distance: Math.hypot(target.x - point.x, target.y - point.y),
   };
 }
 

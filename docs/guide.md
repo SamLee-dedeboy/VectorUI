@@ -22,7 +22,8 @@ the layout containers. This guide is the reference for building UI with it.
 11. [Hooks & layout utilities](#11-hooks--layout-utilities)
 12. [Recipes](#12-recipes)
 13. [Limitations & rough edges](#13-limitations--rough-edges)
-14. [Build & test](#14-build--test)
+14. [Edit mode (`CurveSlider`, `DesignSurface`)](#14-edit-mode-curveslider-designsurface)
+15. [Build & test](#15-build--test)
 
 ---
 
@@ -442,6 +443,11 @@ Honest list — useful when assessing the API:
   within a paragraph. Mixed formatting means multiple `<Text>` elements.
 - **No animation primitive.** No `useTween` / transition component is exported;
   apps roll their own (see [Animation](#12-recipes)).
+- **Edit mode v1 is parameterised-only.** `DesignSurface` and the
+  `useEditHandle` protocol expose draggable control points for components
+  that opt in (`CurveSlider.editablePoints`, `Frame.onSlotEdit`). Editing an
+  *arbitrary* user-supplied SVG path string is out of scope — the consumer
+  rebuilds curves/shapes from their spec on each drag.
 - **`Frame` slot specs are hand-coded coordinates.** `x`, `y`, `width` are
   literal numbers (`width: containerWidth - 150` and similar). `Flow` removes
   most of this, but anchor/region geometry is still manual.
@@ -455,7 +461,119 @@ Honest list — useful when assessing the API:
 
 ---
 
-## 14. Build & test
+## 14. Edit mode (`CurveSlider`, `DesignSurface`)
+
+Phase 3 added a small protocol for turning any VectorUI scene into a direct-
+manipulation editor — drag a point in the running UI and the prop that
+produced it updates. The runtime and the editor are the *same* component;
+only the surrounding context decides whether handles draw.
+
+### The two parts
+
+- **`useEditHandle({ id, point, onDrag, axis?, label? })`** (Layer 2). A
+  component (or its caller) declares an editable point: where the handle
+  lives in layout units and what to do when it moves.
+- **`<DesignSurface>`** (Layer 3). Wraps a subtree; any descendant that
+  registers a handle gets a draggable visual in the surface's overlay.
+
+Components that participate also accept an `edit` prop as sugar — it
+self-wraps the component in a `<DesignSurface>` so a single instance can go
+into edit mode without putting the whole scene there.
+
+### `CurveSlider` — value selector whose track *is* the function
+
+```tsx
+import { CurveSlider, quadratic, type CurvePoint } from "vectorui";
+
+const [spec, setSpec] = useState({
+  p0: { x: 0, y: 100 },
+  control: { x: 140, y: 100 },
+  p1: { x: 300, y: 0 },
+});
+const [t, setT] = useState(0.4);
+const curve = useMemo(() => quadratic(spec), [spec]);
+
+<CurveSlider
+  curve={curve}
+  value={t}
+  onChange={setT}
+  label="Easing progress"
+  // Optional: declare which points are editable. Stays inert unless inside
+  // a <DesignSurface> or with `edit` set on this component.
+  editablePoints={[
+    { id: "p0",      point: spec.p0,      onDrag: (p) => setSpec((s) => ({ ...s, p0: p })) },
+    { id: "control", point: spec.control, onDrag: (p) => setSpec((s) => ({ ...s, control: p })) },
+    { id: "p1",      point: spec.p1,      onDrag: (p) => setSpec((s) => ({ ...s, p1: p })) },
+  ]}
+  edit  // or wrap a parent in <DesignSurface>
+/>
+```
+
+Interactions:
+
+- **Pointer** (mouse, pen, touch): press anywhere on the track or thumb; the
+  pointer is mapped to the nearest point on the curve via
+  `nearestPointOnCurve`. Pointer capture keeps drag alive past the bounds.
+- **Keyboard**: arrow keys step `value` by `step` (default `0.05`),
+  `Home`/`End` jump to `0`/`1`. Focus rendered as a path, not a CSS outline
+  (so it respects the SVG transform).
+- **A11y**: `role="slider"` with `aria-valuemin/max/now`, `aria-valuetext`
+  from `formatValue`.
+
+### `Frame` — slot anchors as edit handles
+
+```tsx
+<Frame
+  shape={(w, h) => tokens.shapes.rectRounded(w, h)}
+  width={320}
+  height={150}
+  slots={{
+    title: { type: "region", x: slots.title.x, y: slots.title.y, width: 260, height: 28 },
+    body:  { type: "region", x: slots.body.x,  y: slots.body.y,  width: 260, height: 60 },
+  }}
+  onSlotEdit={(name, next) =>
+    setSlots((cur) => ({ ...cur, [name]: next }))
+  }
+  edit
+>
+  …
+</Frame>
+```
+
+Passing `onSlotEdit` makes each slot's origin a draggable handle. The
+consumer owns the SlotSpec map and decides how each `(x, y)` reconciles
+with it — Frame doesn't try to write back into specs that use `{ after }`
+or negative anchor coordinates.
+
+### Authoring a new editable component
+
+1. Decide which parameters are points in layout space — control points,
+   anchors, gap markers, anything geometric.
+2. Inside the component, for each editable parameter, call
+   `useEditHandle({ id, point, onDrag })`. Keep IDs stable across renders.
+3. Don't render the handle yourself — that's `DesignSurface`'s job. Your
+   component only declares the data.
+4. Optionally accept an `edit` prop and self-wrap in `<DesignSurface>` for
+   the single-component sugar.
+
+Handles render with a small focus halo and respect the pointer-capture
+flow. Constraint is via `axis: "x" | "y" | "free"` (default `"free"`); the
+rendering layer pins the orthogonal coordinate.
+
+### Out of scope (Phase 3)
+
+- Editing arbitrary `<path d="…">` strings — only parameterised curves and
+  built-in shapes.
+- Round-tripping edit-mode changes back to source code — Edit mode mutates
+  in-memory props; "copy code" is a follow-up.
+- Snap, grid, multi-select, undo — none of these in v1.
+
+For the protocol internals (registry semantics, authoring a new editable
+component), see [`edit-mode.md`](./edit-mode.md).
+
+---
+
+## 15. Build & test
 
 ```bash
 npm run dev      # dev server at http://localhost:5181

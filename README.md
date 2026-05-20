@@ -73,6 +73,36 @@ plumbing. Phase 2 addressed it:
 The result: across the five demos, zero `/ scale` in consumer code, zero
 guessed fallback heights, zero `onMeasure`/`onLayout` wiring.
 
+## Phase 3 — first-principles components + edit mode
+
+Phase 3 stops treating VectorUI as "an SVG-rendered version of an HTML kit"
+and starts using SVG as its own design surface — components that the medium
+makes possible, and a direct-manipulation editor that runs on the same
+geometry as the live UI.
+
+- **`CurveSlider`** — a continuous-value selector whose track *is* the
+  transfer function. Place it on any `Curve` (line, arc, quadratic Bézier,
+  polyline) and the curve's shape encodes the function — an audio taper,
+  an easing preview, a quarter-arc hour selector. Pointer XY maps to the
+  nearest point on the curve via the new `nearestPointOnCurve` /
+  `pointAt` Layer-2 exports. Keyboard, focus-as-path, `role="slider"`
+  a11y, and reduced-motion all built in.
+- **`<DesignSurface>` + `useEditHandle`** — a small protocol for direct
+  manipulation. Components declare *which* points are draggable
+  (`CurveSlider.editablePoints`, `Frame.onSlotEdit`); a surrounding
+  `<DesignSurface>` draws them in an aggregating overlay. The same
+  declarations also power a per-component `edit` prop that self-wraps in a
+  scoped surface — one declaration, two rendering routes. The runtime UI
+  slides a value along the curve; edit mode reshapes the curve. Same
+  geometry, two semantics.
+- **Demos 7 & 8** are the worked examples — `#/07-curve-slider` (runtime),
+  `#/08-design-surface` (edit). See [guide.md §14](./docs/guide.md) for the
+  protocol and authoring notes.
+
+Deliberately out of scope this phase: editing arbitrary `<path d="…">`
+strings, round-tripping edits to source, multi-select / snap / undo, and an
+agent-authorability eval (revisited after more components exist).
+
 ## Run
 
 ```bash

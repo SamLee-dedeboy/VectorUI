@@ -11,6 +11,9 @@ import {
 import { Path } from "../svg/Path";
 import { SlotContext } from "../layout/slot";
 import { useMeasuredBounds } from "../layout/measureBounds";
+import { useEditHandle } from "../layout/editHandles";
+import type { CurvePoint } from "../layout/walkPath";
+import { DesignSurface } from "./DesignSurface";
 
 /**
  * Layer 3 — `Frame`: a shape used as a layout container (SPEC §6.1).
@@ -135,10 +138,27 @@ export type FrameProps = Omit<
   padding?: number;
   /** Reports the Frame's resolved size once layout settles. */
   onLayout?: (size: { width: number; height: number }) => void;
+  /**
+   * Edit-mode: when set AND the Frame sits inside a `<DesignSurface>` (or
+   * its own `edit` prop is true), each named slot gets a draggable handle at
+   * its placed origin. Called with the new (x, y) in Frame-local layout
+   * units — the consumer decides how to update its SlotSpec (some specs use
+   * `{ after }` for y or negative anchor coords, so the policy lives there).
+   */
+  onSlotEdit?: (name: string, next: CurvePoint) => void;
+  /** Sugar: wrap this Frame in its own `<DesignSurface>` so slot handles are
+   *  draggable without an outer surface. */
+  edit?: boolean;
   children?: ReactNode;
 };
 
-export function Frame({
+export function Frame(props: FrameProps) {
+  const { edit, ...rest } = props;
+  const inner = <FrameInner {...rest} />;
+  return edit ? <DesignSurface>{inner}</DesignSurface> : inner;
+}
+
+function FrameInner({
   shape,
   width,
   height,
@@ -151,9 +171,10 @@ export function Frame({
   title,
   padding = 0,
   onLayout,
+  onSlotEdit,
   children,
   ...gProps
-}: FrameProps) {
+}: Omit<FrameProps, "edit">) {
   // Content sizes reported by each slot, keyed by slot name.
   const [measured, setMeasured] = useState<Record<string, Size>>({});
 
@@ -284,8 +305,42 @@ export function Frame({
         <Path d={hitPath} fill="transparent" style={{ pointerEvents: "all" }} />
       ) : null}
       <FrameContext.Provider value={ctx}>{children}</FrameContext.Provider>
+      {/* Slot anchor handles. Each placed slot exposes its (tx, ty) — that's
+          the slot's origin in Frame-local layout units. The consumer's
+          `onSlotEdit` decides how to reconcile a drag with the SlotSpec
+          (e.g. `{ after }` ys, negative anchor coords). */}
+      {onSlotEdit
+        ? Object.entries(placements).map(([name, placement]) => (
+            <RegisterSlotHandle
+              key={name}
+              name={name}
+              point={{ x: placement.tx, y: placement.ty }}
+              onDrag={onSlotEdit}
+            />
+          ))
+        : null}
     </g>
   );
+}
+
+/** Registers a draggable handle for a Frame slot. Renders nothing — the
+ *  surrounding DesignSurface draws the handle. */
+function RegisterSlotHandle({
+  name,
+  point,
+  onDrag,
+}: {
+  name: string;
+  point: CurvePoint;
+  onDrag: (name: string, next: CurvePoint) => void;
+}) {
+  useEditHandle({
+    id: `frame-slot-${name}`,
+    point,
+    label: `Slot ${name}`,
+    onDrag: (next) => onDrag(name, next),
+  });
+  return null;
 }
 
 // --- Frame.Slot -----------------------------------------------------------
