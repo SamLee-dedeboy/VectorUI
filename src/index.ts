@@ -64,12 +64,19 @@ export {
 export type { CoordinateScale } from "./layout/coordinateScale";
 export { useSlot } from "./layout/slot";
 export type { SlotInfo } from "./layout/slot";
-export { arc, line, quadratic, distributeAlong } from "./layout/walkPath";
+export {
+  arc,
+  line,
+  polyline,
+  quadratic,
+  distributeAlong,
+} from "./layout/walkPath";
 export type {
   Curve,
   CurvePoint,
   ArcSpec,
   LineSpec,
+  PolylineSpec,
   QuadraticSpec,
   Distribute,
   DistributeOptions,

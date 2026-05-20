@@ -1,18 +1,27 @@
-import { PathFlow } from "../../components/PathFlow";
 import { Path } from "../../svg/Path";
-import { quadratic, type CurvePoint } from "../../layout/walkPath";
+import {
+  distributeAlong,
+  quadratic,
+  type CurvePoint,
+} from "../../layout/walkPath";
 import { tokens } from "../../tokens";
 import { useTween } from "../02-card/useTween";
 import { Icon, type IconName } from "./Icon";
 import { hexagon, cog } from "./chrome";
+import { useStaggeredReveal } from "./useStaggeredReveal";
 
 /**
  * `RadialMenu` — a reusable menu that distributes items along a curve.
  *
  * `mode` picks an arc (a fan around a hub) or a line (a row); switching is
  * animated — the curve is one quadratic Bézier with its control points tweened
- * between the two configurations. Items, mode and orientation are props. The
- * item chips are hexagons and the hub a cog — both plain generated paths.
+ * between the two configurations.
+ *
+ * `open` controls a staggered reveal: the cog hub doubles as a "…" toggle, and
+ * when it flips open the chips fly out from the hub along their radial
+ * trajectory, one after the other (left-to-right). Toggling closed reverses
+ * the path. Each chip's traversal takes `itemDurationMs`, neighbours start
+ * `staggerMs` apart.
  */
 
 export type RadialMenuMode = "arc" | "line";
@@ -22,6 +31,14 @@ export type RadialMenuProps = {
   items: IconName[];
   /** "arc" fans the items around a hub; "line" lays them in a row. Animated. */
   mode: RadialMenuMode;
+  /** Whether the menu is expanded. The cog hub toggles this via `onToggle`. */
+  open?: boolean;
+  /** Called when the user clicks the cog hub. */
+  onToggle?: () => void;
+  /** Per-item travel time for the reveal, in milliseconds. */
+  itemDurationMs?: number;
+  /** Delay between consecutive items in the reveal, in milliseconds. */
+  staggerMs?: number;
   /** Rotate each item to the curve tangent, or keep it upright. */
   orient?: "along" | "upright";
   /** Scene size, in layout units. */
@@ -44,6 +61,10 @@ const lerpPt = (a: CurvePoint, b: CurvePoint, t: number): CurvePoint => ({
 export function RadialMenu({
   items,
   mode,
+  open = true,
+  onToggle,
+  itemDurationMs = 300,
+  staggerMs = 60,
   orient = "along",
   width = 540,
   height = 400,
@@ -54,8 +75,16 @@ export function RadialMenu({
   const hub: CurvePoint = { x: width / 2, y: height * 0.75 };
   const radius = height * 0.425;
 
-  // t: 0 = line, 1 = arc. Tweened so the switch animates.
+  // t: 0 = line, 1 = arc. Tweened so the mode switch animates.
   const t = useTween(mode === "arc" ? 1 : 0, 380);
+
+  // Per-item reveal progress; 1 = at the curve, 0 = tucked into the hub.
+  const reveal = useStaggeredReveal(items.length, open, {
+    itemDurationMs,
+    staggerMs,
+  });
+  // Overall opacity for the guide line — first item to start animating wins.
+  const guideAlpha = reveal[0] ?? (open ? 1 : 0);
 
   const onCircle = (a: number): CurvePoint => ({
     x: hub.x + radius * Math.cos(a),
@@ -81,46 +110,78 @@ export function RadialMenu({
     p1: lerpPt(lineEnd, arcEnd, t),
   });
 
+  // Even-distributed arc-length offsets — the chips' final resting places.
+  const offsets = distributeAlong(curve.length, items.length, {
+    distribute: "even",
+  });
+
   return (
     <>
-      {/* The curve itself, drawn faintly as a guide. */}
+      {/* The curve itself, drawn faintly as a guide — fades in with the reveal. */}
       <path
         d={curve.toPathData()}
         fill="none"
         stroke={tokens.color.line}
         strokeWidth={1.5}
         strokeDasharray="3 6"
+        opacity={guideAlpha}
         aria-hidden="true"
       />
 
-      {/* The hub — a cog path — fades in with the arc. */}
+      {/* Items: each chip travels along the line from hub → final on its
+          curve, with a stagger so they appear one-by-one. We don't use
+          PathFlow here because PathFlow places chips at their static curve
+          offsets — we need an animated lerp from the hub. */}
+      <g role="menu" aria-label="Radial menu">
+        {items.map((name, i) => {
+          const p = reveal[i] ?? 0;
+          if (p <= 0) return null;
+          const final = curve.pointAtLength(offsets[i] ?? 0);
+          const tangent = curve.tangentAtLength(offsets[i] ?? 0);
+          const x = hub.x + (final.x - hub.x) * p;
+          const y = hub.y + (final.y - hub.y) * p;
+          const angleDeg = orient === "along" ? (tangent * 180) / Math.PI : 0;
+          return (
+            <g
+              key={name}
+              transform={`translate(${x} ${y}) rotate(${angleDeg}) scale(${p})`}
+              opacity={p}
+            >
+              <MenuItem name={name} fill={itemFill} iconColor={iconColor} />
+            </g>
+          );
+        })}
+      </g>
+
+      {/* The cog hub — also the "…" toggle. Three dots sit in the middle of a
+          green cog; clicking it expands or collapses the menu. The cog itself
+          only fully fills in once `mode` reaches `"arc"`. */}
       <g
-        aria-hidden="true"
-        opacity={t}
+        role={onToggle ? "button" : undefined}
+        aria-label={onToggle ? (open ? "Close menu" : "Open menu") : undefined}
+        aria-expanded={onToggle ? open : undefined}
+        tabIndex={onToggle ? 0 : undefined}
+        onClick={onToggle}
+        onKeyDown={
+          onToggle
+            ? (e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onToggle();
+                }
+              }
+            : undefined
+        }
+        style={onToggle ? { cursor: "pointer" } : undefined}
         transform={`translate(${hub.x} ${hub.y})`}
       >
-        <Path d={cog(34)} fill={hubFill} />
+        {/* When mode=line the cog softens to a plain disc — opacity rides `t`. */}
+        <circle r={34} fill={hubFill} />
+        <Path d={cog(34)} fill={hubFill} opacity={t} />
         {[-10, 0, 10].map((dx) => (
           <circle key={dx} cx={dx} cy={0} r={3} fill={tokens.color.accentInk} />
         ))}
       </g>
-
-      <PathFlow
-        curve={curve}
-        distribute="even"
-        orient={orient}
-        role="menu"
-        aria-label="Radial menu"
-      >
-        {items.map((name) => (
-          <MenuItem
-            key={name}
-            name={name}
-            fill={itemFill}
-            iconColor={iconColor}
-          />
-        ))}
-      </PathFlow>
     </>
   );
 }
