@@ -9,6 +9,7 @@ import { Demo as CardDemo } from "./02-card/demo";
 import { Demo as RadialMenuDemo } from "./03-radial-menu/demo";
 import { Demo as BreakpointMorphDemo } from "./04-breakpoint-morph/demo";
 import { Demo as SettingsDemo } from "./05-settings/demo";
+import { Demo as ProceduralPathDemo } from "./06-procedural-path/demo";
 
 // Demo source, imported verbatim via Vite's `?raw` so each demo page can show
 // the exact code that produced it (the "Code" tab) — demo.tsx first.
@@ -31,6 +32,11 @@ import breakpointMorphDemoSrc from "./04-breakpoint-morph/demo.tsx?raw";
 import morphCardSrc from "./04-breakpoint-morph/MorphCard.tsx?raw";
 import settingsDemoSrc from "./05-settings/demo.tsx?raw";
 import settingsPanelSrc from "./05-settings/SettingsPanel.tsx?raw";
+import proceduralDemoSrc from "./06-procedural-path/demo.tsx?raw";
+import proceduralPathSrc from "./06-procedural-path/ProceduralPath.tsx?raw";
+import proceduralShapeSrc from "./06-procedural-path/proceduralShape.ts?raw";
+import proceduralControlsSrc from "./06-procedural-path/Controls.tsx?raw";
+import proceduralStateSrc from "./06-procedural-path/state.ts?raw";
 
 /** One source file shown in a demo's Code tab. */
 export type SourceFile = { name: string; code: string };
@@ -137,7 +143,23 @@ export const DEMOS: DemoEntry[] = [
       { name: "SettingsPanel.tsx", code: settingsPanelSrc },
     ],
   },
+  {
+    id: "06-procedural-path",
+    title: "6 · Procedural path with live reflow",
+    blurb:
+      "Sliders drive a closed-form left-edge wave; text wraps the exact contour the path draws.",
+    proves:
+      "One closed-form function feeding both ShapeGenerator and Text's intrusionAt — slider input morphs the silhouette and reflows the paragraph on one frame.",
+    Component: ProceduralPathDemo,
+    sources: [
+      { name: "demo.tsx", code: proceduralDemoSrc },
+      { name: "ProceduralPath.tsx", code: proceduralPathSrc },
+      { name: "proceduralShape.ts", code: proceduralShapeSrc },
+      { name: "Controls.tsx", code: proceduralControlsSrc },
+      { name: "state.ts", code: proceduralStateSrc },
+    ],
+  },
 ];
 
-/** All five SPEC §11 demos are built. */
+/** All five SPEC §11 demos are built; Demo 6 is the DX-probe addition. */
 export const PLANNED: DemoEntry[] = [];
