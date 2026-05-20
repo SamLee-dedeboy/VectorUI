@@ -9,7 +9,12 @@
 export { VectorUIRoot } from "./components/VectorUIRoot";
 export type { VectorUIRootProps } from "./components/VectorUIRoot";
 export { Text } from "./components/Text";
-export type { TextProps, TextMeasurement, FlowAround } from "./components/Text";
+export type {
+  TextProps,
+  TextMeasurement,
+  FlowAround,
+  OverflowWrap,
+} from "./components/Text";
 export { Frame } from "./components/Frame";
 export type {
   FrameProps,

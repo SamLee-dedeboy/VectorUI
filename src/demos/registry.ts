@@ -24,6 +24,9 @@ import archFloatSrc from "./01-text-flow/archFloat.ts?raw";
 import cardDemoSrc from "./02-card/demo.tsx?raw";
 import cardSrc from "./02-card/Card.tsx?raw";
 import scoopCardSrc from "./02-card/scoopCard.ts?raw";
+import landscapeCardSrc from "./02-card/LandscapeCard.tsx?raw";
+import triangleFloatSrc from "./02-card/triangleFloat.ts?raw";
+import wobbleSrc from "./02-card/wobble.ts?raw";
 import buttonSrc from "./02-card/Button.tsx?raw";
 import useTweenSrc from "./02-card/useTween.ts?raw";
 import radialMenuDemoSrc from "./03-radial-menu/demo.tsx?raw";
@@ -95,13 +98,16 @@ export const DEMOS: DemoEntry[] = [
     id: "02-card",
     title: "2 · Non-rectangular card",
     blurb:
-      "A card with a scoop carved into its left edge; the body text follows that contour.",
+      "A scoop-edged card (hover wobbles all four edges) and a hand-drawn landscape postcard with a mountain horizon.",
     proves: "Steps 5–6: Frame, the slot system, path-as-container, flow-around.",
     Component: CardDemo,
     sources: [
       { name: "demo.tsx", code: cardDemoSrc },
       { name: "Card.tsx", code: cardSrc },
       { name: "scoopCard.ts", code: scoopCardSrc },
+      { name: "LandscapeCard.tsx", code: landscapeCardSrc },
+      { name: "triangleFloat.ts", code: triangleFloatSrc },
+      { name: "wobble.ts", code: wobbleSrc },
       { name: "Button.tsx", code: buttonSrc },
       { name: "useTween.ts", code: useTweenSrc },
     ],

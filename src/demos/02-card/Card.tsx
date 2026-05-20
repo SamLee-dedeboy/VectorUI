@@ -65,9 +65,11 @@ export function Card({
   accentInk = color.accentInk,
 }: CardProps) {
   const [hovered, setHovered] = useState(false);
-  // 0 → 1 on hover. The scoop deepens, so the body text re-wraps as it tweens.
+  // 0 → 1 on hover. The scoop deepens AND the four edges grow a hand-drawn
+  // wobble, so the body text re-wraps as the contour tweens.
   const morph = useTween(hovered ? 1 : 0);
   const depth = scoopDepth * (1 + morph * 0.42);
+  const wobble = morph * 5; // peak amplitude of the hover wobble, layout units
 
   const contentW = width - PAD * 2;
 
@@ -78,8 +80,9 @@ export function Card({
         scoopTop: SCOOP_TOP,
         scoopHeight: SCOOP_HEIGHT,
         depth,
+        wobble,
       }),
-    [depth],
+    [depth, wobble],
   );
   // The body column's top-left is a fixed point in card space (PAD, BODY_TOP),
   // so the scoop's intrusion is exact — no guessed offset.

@@ -1,3 +1,5 @@
+import { wobbleEdge } from "./wobble";
+
 /**
  * `scoopCard` — a card outline with a smooth concave scoop carved into its
  * left edge, paired with the matching intrusion profile so a paragraph can be
@@ -7,6 +9,11 @@
  * body text provably wraps the curve that is rendered — never an approximation
  * of it (cf. `cornerBlob` in demo 1). It is what lets the card demonstrate
  * that text wrapping is not bound to a rectangle.
+ *
+ * An optional `wobble` amplitude jitters the four straight edges (top, right,
+ * bottom, and the left's straight portions above/below the scoop) for a
+ * hand-drawn aesthetic. The corner curves stay clean; the wobble envelope
+ * fades to 0 at each endpoint so the edge always meets its corner cleanly.
  *
  * All coordinates are in layout units, with the card's top-left at (0, 0).
  */
@@ -24,6 +31,8 @@ export type ScoopCardOptions = {
   depth: number;
   /** Outline sample count for the scoop curve — higher is smoother. */
   samples?: number;
+  /** Hand-drawn wobble amplitude on the straight edges, in layout units. */
+  wobble?: number;
 };
 
 /** A `FlowAround.intrusionAt`: left intrusion over a [yTop, yBottom] band. */
@@ -44,6 +53,7 @@ export function scoopCard(opts: ScoopCardOptions): ScoopCard {
   const cornerRadius = opts.cornerRadius ?? 22;
   const { scoopTop, scoopHeight, depth } = opts;
   const samples = opts.samples ?? 48;
+  const wobble = opts.wobble ?? 0;
 
   // The scoop curve: how far the left edge bows inward at a given card-y.
   // A single smooth lobe — zero at the band's ends, `depth` at its middle.
@@ -60,17 +70,17 @@ export function scoopCard(opts: ScoopCardOptions): ScoopCard {
     const sTop = Math.max(scoopTop, cr);
     const sBottom = Math.min(scoopTop + scoopHeight, h - cr);
 
-    // Outline, drawn clockwise from the top-left corner.
-    const d = [
-      `M ${p(cr)} 0`,
-      `L ${p(w - cr)} 0`,
-      `Q ${p(w)} 0 ${p(w)} ${p(cr)}`,
-      `L ${p(w)} ${p(h - cr)}`,
-      `Q ${p(w)} ${p(h)} ${p(w - cr)} ${p(h)}`,
-      `L ${p(cr)} ${p(h)}`,
-      `Q 0 ${p(h)} 0 ${p(h - cr)}`,
-      `L 0 ${p(sBottom)}`,
-    ];
+    // Outline, drawn clockwise from the top-left corner. Each straight edge
+    // is a wobble-sampled polyline; the corners stay clean Q curves.
+    const d: string[] = [`M ${p(cr)} 0`];
+    wobbleEdge(d, cr, 0, w - cr, 0, wobble, 0.3); // top
+    d.push(`Q ${p(w)} 0 ${p(w)} ${p(cr)}`);
+    wobbleEdge(d, w, cr, w, h - cr, wobble, 1.7); // right
+    d.push(`Q ${p(w)} ${p(h)} ${p(w - cr)} ${p(h)}`);
+    wobbleEdge(d, w - cr, h, cr, h, wobble, 2.8); // bottom
+    d.push(`Q 0 ${p(h)} 0 ${p(h - cr)}`);
+    wobbleEdge(d, 0, h - cr, 0, sBottom, wobble, 4.2); // left, below scoop
+
     // Walk the scoop upward, sampling the lobe so the rendered edge matches
     // the intrusion query point-for-point.
     if (sBottom > sTop) {
@@ -79,7 +89,8 @@ export function scoopCard(opts: ScoopCardOptions): ScoopCard {
         d.push(`L ${p(scoopXAt(y))} ${p(y)}`);
       }
     }
-    d.push(`L 0 ${p(cr)}`, `Q 0 0 ${p(cr)} 0`, "Z");
+    wobbleEdge(d, 0, sTop, 0, cr, wobble, 5.5); // left, above scoop
+    d.push(`Q 0 0 ${p(cr)} 0`, "Z");
     return d.join(" ");
   };
 
