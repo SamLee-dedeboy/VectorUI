@@ -11,6 +11,7 @@ import { Demo as BreakpointMorphDemo } from "./04-breakpoint-morph/demo";
 import { Demo as LayoutPlaygroundDemo } from "./05-layout-playground/demo";
 import { Demo as ProceduralPathDemo } from "./06-procedural-path/demo";
 import { Demo as CurveSliderDemo } from "./07-curve-slider/demo";
+import { Demo as DesignSurfaceDemo } from "./08-design-surface/demo";
 
 // Demo source, imported verbatim via Vite's `?raw` so each demo page can show
 // the exact code that produced it (the "Code" tab) — demo.tsx first.
@@ -50,6 +51,7 @@ import proceduralShapeSrc from "./06-procedural-path/proceduralShape.ts?raw";
 import proceduralControlsSrc from "./06-procedural-path/Controls.tsx?raw";
 import proceduralStateSrc from "./06-procedural-path/state.ts?raw";
 import curveSliderDemoSrc from "./07-curve-slider/demo.tsx?raw";
+import designSurfaceDemoSrc from "./08-design-surface/demo.tsx?raw";
 
 /** One source file shown in a demo's Code tab. */
 export type SourceFile = { name: string; code: string };
@@ -193,6 +195,16 @@ export const DEMOS: DemoEntry[] = [
       "Phase 3 — first-principles components. CurveSlider + nearestPointOnCurve / pointAt; pointer + keyboard + reduced-motion-aware.",
     Component: CurveSliderDemo,
     sources: [{ name: "demo.tsx", code: curveSliderDemoSrc }],
+  },
+  {
+    id: "08-design-surface",
+    title: "8 · DesignSurface — direct manipulation",
+    blurb:
+      "Drag handles that pass through the layout system, not around it. A and B reshape a CurveSlider's transfer function; C cascades scoop → text rewrap → slot height → Frame auto-height, with a linked-vs-free title/body toggle, an editable gap, width auto-expand, and constraint visualization.",
+    proves:
+      "Phase 3 — direct-manipulation authoring. useEditHandle protocol; DesignSurface aggregation; per-component edit-mode sugar; constraint-respecting drags.",
+    Component: DesignSurfaceDemo,
+    sources: [{ name: "demo.tsx", code: designSurfaceDemoSrc }],
   },
 ];
 
