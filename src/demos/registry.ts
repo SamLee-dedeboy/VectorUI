@@ -10,6 +10,7 @@ import { Demo as RadialMenuDemo } from "./03-radial-menu/demo";
 import { Demo as BreakpointMorphDemo } from "./04-breakpoint-morph/demo";
 import { Demo as LayoutPlaygroundDemo } from "./05-layout-playground/demo";
 import { Demo as ProceduralPathDemo } from "./06-procedural-path/demo";
+import { Demo as CurveSliderDemo } from "./07-curve-slider/demo";
 
 // Demo source, imported verbatim via Vite's `?raw` so each demo page can show
 // the exact code that produced it (the "Code" tab) — demo.tsx first.
@@ -48,6 +49,7 @@ import proceduralPathSrc from "./06-procedural-path/ProceduralPath.tsx?raw";
 import proceduralShapeSrc from "./06-procedural-path/proceduralShape.ts?raw";
 import proceduralControlsSrc from "./06-procedural-path/Controls.tsx?raw";
 import proceduralStateSrc from "./06-procedural-path/state.ts?raw";
+import curveSliderDemoSrc from "./07-curve-slider/demo.tsx?raw";
 
 /** One source file shown in a demo's Code tab. */
 export type SourceFile = { name: string; code: string };
@@ -181,6 +183,16 @@ export const DEMOS: DemoEntry[] = [
       { name: "Controls.tsx", code: proceduralControlsSrc },
       { name: "state.ts", code: proceduralStateSrc },
     ],
+  },
+  {
+    id: "07-curve-slider",
+    title: "7 · CurveSlider — the curve is the function",
+    blurb:
+      "One slider, three carriers: a volume cusp with +/− buttons (fine control at the sweet spot), a hike elevation profile (the curve is the trail), and a full-circle clock face. The curve always is what the value means.",
+    proves:
+      "Phase 3 — first-principles components. CurveSlider + nearestPointOnCurve / pointAt; pointer + keyboard + reduced-motion-aware.",
+    Component: CurveSliderDemo,
+    sources: [{ name: "demo.tsx", code: curveSliderDemoSrc }],
   },
 ];
 
