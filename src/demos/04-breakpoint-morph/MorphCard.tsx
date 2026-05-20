@@ -2,7 +2,6 @@ import { Frame } from "../../components/Frame";
 import { Flow } from "../../components/Flow";
 import { Text } from "../../components/Text";
 import { useViewportWidth } from "../../layout/breakpoints";
-import { breakpointMorph } from "../../layout/breakpoints";
 import { usePrefersReducedMotion } from "../../layout/motion";
 import { morphPath } from "../../layout/morphPath";
 import { tokens } from "../../tokens";
@@ -10,12 +9,27 @@ import { tokens } from "../../tokens";
 /**
  * `MorphCard` — a reusable card whose shape responds to the viewport width.
  *
- * As the real pixel width crosses `threshold`, the outline morphs from a
- * pointed leaf to a sharp rounded rectangle, eased across `band`. Must be
- * rendered under a `VectorUIRoot` (it reads `useViewportWidth`).
+ * Pass an ordered list of `stops`: at each stop's `minWidth`, the card adopts
+ * that stop's `shape`. Between two adjacent stops, the outline eases from one
+ * to the next across a `band` of pixels centered on the upper stop's boundary.
+ *
+ * Because every shape generator in `tokens.shapes` emits the same
+ * eight-quadratic command structure, the per-boundary morphs compose
+ * iteratively — `morphPath(morphPath(A, B, t1), C, t2)` is well-defined and
+ * collapses to a pure stop whenever the corresponding `t` saturates.
+ *
+ * Must be rendered under a `VectorUIRoot` (reads `useViewportWidth`).
  */
 
 const smoothstep = (t: number) => t * t * (3 - 2 * t);
+const clamp01 = (n: number) => Math.max(0, Math.min(1, n));
+
+export type MorphStop = {
+  /** Real-pixel viewport width at which this stop becomes the dominant shape. */
+  minWidth: number;
+  /** A shape generator from `tokens.shapes` (or any matched-structure path fn). */
+  shape: (w: number, h: number) => string;
+};
 
 export type MorphCardProps = {
   title: string;
@@ -23,9 +37,9 @@ export type MorphCardProps = {
   /** Card box size, in layout units. */
   width?: number;
   height?: number;
-  /** Viewport width (px) at which the shape is half-morphed. */
-  threshold?: number;
-  /** Viewport-width band (px) over which the morph eases. */
+  /** Ordered ascending by `minWidth`. The first stop's `minWidth` is unused. */
+  stops: MorphStop[];
+  /** Viewport-pixel band over which each boundary eases. */
   band?: number;
   /** Card surface fill. */
   surface?: string;
@@ -35,13 +49,19 @@ export type MorphCardProps = {
   captionFill?: string;
 };
 
+/** Activation 0→1 of a single boundary, centered on `threshold`. */
+function boundaryActivation(width: number, threshold: number, band: number) {
+  if (band <= 0) return width >= threshold ? 1 : 0;
+  return clamp01((width - (threshold - band / 2)) / band);
+}
+
 export function MorphCard({
   title,
   caption,
   width = 430,
   height = 200,
-  threshold = 600,
-  band = 150,
+  stops,
+  band = 120,
   surface = tokens.color.surface,
   titleFill = tokens.color.ink,
   captionFill = tokens.color.inkMuted,
@@ -49,12 +69,20 @@ export function MorphCard({
   const viewportWidth = useViewportWidth();
   const reduced = usePrefersReducedMotion();
 
-  const raw = breakpointMorph(viewportWidth, threshold, band);
-  // Reduced motion: snap to one shape or the other instead of easing.
-  const t = reduced ? (raw < 0.5 ? 0 : 1) : smoothstep(raw);
+  if (stops.length < 2) {
+    throw new Error("MorphCard: requires at least two stops");
+  }
 
-  const shape = (w: number, h: number) =>
-    morphPath(tokens.shapes.leaf(w, h), tokens.shapes.sharp(w, h), t);
+  const shape = (w: number, h: number) => {
+    let d = stops[0].shape(w, h);
+    for (let i = 1; i < stops.length; i++) {
+      const raw = boundaryActivation(viewportWidth, stops[i].minWidth, band);
+      // Reduced motion: snap to the nearer shape instead of easing.
+      const t = reduced ? (raw < 0.5 ? 0 : 1) : smoothstep(raw);
+      d = morphPath(d, stops[i].shape(w, h), t);
+    }
+    return d;
+  };
 
   return (
     <Frame

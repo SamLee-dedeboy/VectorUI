@@ -35,6 +35,7 @@ import radialChromeSrc from "./03-radial-menu/chrome.ts?raw";
 import iconSrc from "./03-radial-menu/Icon.tsx?raw";
 import breakpointMorphDemoSrc from "./04-breakpoint-morph/demo.tsx?raw";
 import morphCardSrc from "./04-breakpoint-morph/MorphCard.tsx?raw";
+import morphShapesSrc from "./04-breakpoint-morph/shapes.ts?raw";
 import settingsDemoSrc from "./05-settings/demo.tsx?raw";
 import settingsPanelSrc from "./05-settings/SettingsPanel.tsx?raw";
 import rowShapeSrc from "./05-settings/rowShape.ts?raw";
@@ -130,12 +131,13 @@ export const DEMOS: DemoEntry[] = [
     id: "04-breakpoint-morph",
     title: "4 · Breakpoint shape-morph",
     blurb:
-      "A card that morphs from a pointed leaf to a rounded rectangle as the viewport crosses 600px.",
+      "A dark card with three stops — spark · petal · banner — that morphs through every breakpoint.",
     proves: "Step 8: breakpoint system, path morphing, ResizeObserver wiring.",
     Component: BreakpointMorphDemo,
     sources: [
       { name: "demo.tsx", code: breakpointMorphDemoSrc },
       { name: "MorphCard.tsx", code: morphCardSrc },
+      { name: "shapes.ts", code: morphShapesSrc },
     ],
   },
   {
