@@ -68,20 +68,14 @@ function DemoIndex() {
     <article>
       <h1>VectorUI</h1>
       <p className="lede">
-        A UI component model rendered entirely in SVG — shapes, not boxes, as
-        the primary layout container.
+        A UI component library rendered entirely in SVG.
       </p>
 
       <section className="concept">
         <h2>Why</h2>
         <p>
-          Web UIs treat the page as nested rectangles. HTML/CSS lets you wrap
-          text inside a box and float a few images, but containers stay
-          rectangular and shape doesn't drive structure. VectorUI puts SVG in
-          the layout role — shapes are containers, text wraps around
-          silhouettes, items distribute along curves. The geometry that draws
-          the UI is the same geometry that lays it out, which collapses a
-          class of "can't do that in CSS" into "the path does it directly".
+          VectorUI tries to escape from the "boxy" look of modern UI components. The concept is to create components entirely based on SVG elements. This unlocks features like using creative shapes as containers, text wraps around irregular
+          silhouettes, and items distributed along curves. More to be discovered as this project moves forward.
         </p>
 
         <h2>Where it shines</h2>
@@ -143,44 +137,6 @@ function DemoIndex() {
           </li>
         </ul>
 
-        <h2>Trade-offs</h2>
-        <ul>
-          <li>
-            A two-coordinate model — layout units for positions/sizes, CSS
-            pixels for text/strokes — that you have to internalize.
-          </li>
-          <li>
-            Bounds via <code>getBBox</code> settle one frame after paint and
-            ignore filter ink (blur/shadow).
-          </li>
-          <li>
-            No native <code>&lt;input&gt;</code> parity yet —{" "}
-            <code>foreignObject</code> form controls are deferred.
-          </li>
-          <li>
-            ARIA + keyboard for primitives; a full WCAG pass, RTL, and
-            forced-colors handling are deferred.
-          </li>
-          <li>
-            Performance unverified at scale; no SSR or virtualization yet.
-          </li>
-        </ul>
-
-        <h2>Where we are</h2>
-        <p>
-          Three phases shipped. <strong>Phase 1</strong> proved the four hard
-          problems (text fidelity vs native <code>&lt;p&gt;</code>, shape-as-
-          container, curve layout, breakpoint morph).{" "}
-          <strong>Phase 2</strong> retired the consumer-side coordinate-math
-          footguns — across all demos: zero <code>/scale</code> divisions,
-          zero guessed fallback heights, zero <code>onMeasure</code>{" "}
-          callbacks. <strong>Phase 3</strong> added first-principles
-          components (<code>CurveSlider</code> — the curve <em>is</em> the
-          function) and a direct-manipulation edit mode (
-          <code>&lt;DesignSurface&gt;</code> + <code>useEditHandle</code>)
-          where drags pass through the layout system rather than around it.
-          61 unit tests across pure-function coverage.
-        </p>
       </section>
 
       <h2>Demos</h2>
@@ -195,6 +151,28 @@ function DemoIndex() {
           </li>
         ))}
       </ul>
+
+      <section className="concept">
+        
+        <h2>What's next</h2>
+        <ul>
+          <li>
+            More components leveraging svgs: radial pickers, shape
+            knobs, orbit menus, constellation selectors. Which
+            interactions benefit most from a vector-native component?
+          </li>
+          <li>
+            Agent-authorability eval: give a coding agent the public API
+            plus a natural-language UI description and see what it
+            produces.
+          </li>
+          <li>
+            Generalise the edit-handle protocol: snap, multi-select,
+            undo, and a round-trip back to the source code so direct
+            manipulation can feed (and be fed by) agent-generated UI.
+          </li>
+        </ul>
+      </section>
       {PLANNED.length > 0 ? (
         <>
           <h2>Planned</h2>
