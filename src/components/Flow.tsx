@@ -6,6 +6,7 @@ import {
   type SVGProps,
 } from "react";
 import { useChildBounds } from "../layout/childBounds";
+import { useSlot } from "../layout/slot";
 import {
   computeFlowLayout,
   type FlowDirection,
@@ -38,14 +39,17 @@ export type FlowProps = Omit<SVGProps<SVGGElement>, "children"> & {
   /** Cross-axis alignment of children. */
   align?: FlowAlign;
   /** Main-axis distribution: `"pack"` (default), `"space-between"`, or
-   *  `"space-around"`. The two spread modes need an explicit `mainSize` —
-   *  without one, the layout falls back to `"pack"`. */
+   *  `"space-around"`. The two spread modes need a `mainSize` — without one,
+   *  the layout falls back to `"pack"`. */
   distribute?: FlowDistribute;
   /** Explicit main-axis extent — required for `distribute` other than
-   *  `"pack"`. Layout never *shrinks* below this when set. */
-  mainSize?: number;
-  /** Explicit cross-axis extent; defaults to the widest/tallest child. */
-  crossSize?: number;
+   *  `"pack"`. Layout never *shrinks* below this when set. `"100%"` fills the
+   *  enclosing Frame slot's width (row direction only — see note below),
+   *  mirroring `Text maxWidth="100%"`. */
+  mainSize?: number | "100%";
+  /** Explicit cross-axis extent; defaults to the widest/tallest child.
+   *  `"100%"` fills the enclosing slot's width (column direction only). */
+  crossSize?: number | "100%";
   /** Top-left of the flow, in layout units. */
   x?: number;
   y?: number;
@@ -70,14 +74,29 @@ export function Flow({
 }: FlowProps) {
   const items = Children.toArray(children).filter(isValidElement);
   const { bounds, Measured } = useChildBounds();
+  const slot = useSlot();
+
+  // `"100%"` fills the enclosing slot's width, the way `Text maxWidth="100%"`
+  // does — which lets a row inside a `Frame width="auto"` slot distribute
+  // `space-between` without the caller hand-computing the content width (the
+  // auto-Frame chicken-and-egg). Only the horizontal axis is slot-constrained
+  // (slots publish width only; height is content-driven), so `"100%"` resolves
+  // on whichever axis is horizontal and is ignored — left to pack/auto — on
+  // the vertical one.
+  const isRow = direction === "row";
+  const slotWidth = slot?.width;
+  const resolvedMainSize =
+    mainSize === "100%" ? (isRow ? slotWidth : undefined) : mainSize;
+  const resolvedCrossSize =
+    crossSize === "100%" ? (isRow ? undefined : slotWidth) : crossSize;
 
   const layout = computeFlowLayout(bounds, items.length, {
     direction,
     gap,
     align,
     distribute,
-    mainSize,
-    crossSize,
+    mainSize: resolvedMainSize,
+    crossSize: resolvedCrossSize,
     padding: Array.isArray(padding) ? padding : [padding, padding],
   });
 
