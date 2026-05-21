@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   sampleBandMax,
+  sampleBand,
   intrusionFromReach,
   combineIntrusions,
   BAND_SAMPLE_STEPS,
@@ -62,6 +63,22 @@ describe("intrusionFromReach", () => {
     const fn = intrusionFromReach(() => (calls++, 1), { steps: 12 });
     fn(0, 1);
     expect(calls).toBe(13);
+  });
+});
+
+describe("sampleBand", () => {
+  it('reports hit=false when every sample is the "outside" sentinel', () => {
+    expect(sampleBand(() => -1, 0, 10)).toEqual({ max: 0, hit: false });
+  });
+
+  it("reports hit=true and the widest positive reach", () => {
+    const reach = (y: number) => (y < 0.5 ? -1 : 8 - y);
+    expect(sampleBand(reach, 0, 10)).toMatchObject({ hit: true });
+    expect(sampleBand(reach, 0, 10).max).toBeGreaterThan(0);
+  });
+
+  it("hit=true even when every positive sample is 0", () => {
+    expect(sampleBand(() => 0, 0, 10)).toEqual({ max: 0, hit: true });
   });
 });
 

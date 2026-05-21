@@ -76,21 +76,28 @@ const rawSamples = (kind: CurveKind, scene: CurveScene): CurvePoint[] => {
 };
 
 /**
- * Evenly arc-length-resampled vertices for the chosen curve — exactly
- * `MORPH_SAMPLES + 1` of them, so the same index across two kinds picks
- * "equivalent" positions for a linear morph. `uniformResample` is the
- * library helper in `src/layout/curveMorph.ts` (promoted from this demo).
+ * Evenly arc-length-resampled vertices for the chosen curve. Returns exactly
+ * `samples + 1` vertices (default `MORPH_SAMPLES`), so the same index across
+ * two kinds picks "equivalent" positions for a linear morph. `uniformResample`
+ * is the library helper in `src/layout/curveMorph.ts` (promoted from this
+ * demo). Dial `samples` up when morphing high-frequency curves where 128
+ * vertices smooths out a crest you wanted to keep.
  */
 export function curvePoints(
   kind: CurveKind,
   scene: CurveScene,
+  samples: number = MORPH_SAMPLES,
 ): CurvePoint[] {
-  return uniformResample(rawSamples(kind, scene), MORPH_SAMPLES);
+  return uniformResample(rawSamples(kind, scene), samples);
 }
 
 /** Build a `Curve` of the chosen kind across the given scene. */
-export function buildCurve(kind: CurveKind, scene: CurveScene): Curve {
-  return polyline({ points: curvePoints(kind, scene) });
+export function buildCurve(
+  kind: CurveKind,
+  scene: CurveScene,
+  samples?: number,
+): Curve {
+  return polyline({ points: curvePoints(kind, scene, samples) });
 }
 
 /** Build a `Curve` directly from an explicit list of vertices. */

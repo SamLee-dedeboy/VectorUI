@@ -46,6 +46,15 @@ const TAG_RAIL_H = 40;
 const FOOTER_PILL_H = 28;
 const BADGE_H = 22;
 
+/** Tag-rail pill height + the perpendicular offset PathFlow applies to
+ *  each pill below the rail line. Kept here so the rail-line position math
+ *  (`tagLineY`) can be derived rather than fudged. */
+const TAG_PILL_HEIGHT = 22;
+const TAG_PILL_ALIGN = 3;
+/** Optical centring bias — a one-unit nudge so the label's cap-height
+ *  weight (not its geometric centre) lands on the rail line. */
+const TAG_RAIL_OPTICAL_BIAS = 1;
+
 /** Horizontal reservation on the right side of the header arch so the
  *  rightmost tab doesn't sit underneath the top-right badge. */
 const BADGE_RESERVE_WIDE = 110;
@@ -126,9 +135,16 @@ export function Playground({ state, onFrameLayout }: PlaygroundProps) {
     p1: { x: archEndX, y: HEADER_H - 18 },
   });
 
-  // Tag rail — a straight line spanning the slot's interior, vertically
-  // centered. With `align={+3}` on the PathFlow the pills sit just below it.
-  const tagLineY = TAG_RAIL_H / 2 - 2;
+  // Tag rail — a straight line spanning the slot's interior. The pills
+  // ride this line via PathFlow `align={TAG_PILL_ALIGN}` (origin="center",
+  // so their geometric centre lands ALIGN units below the line). The line
+  // itself sits at the rail's vertical centre minus that offset, with a
+  // tiny `TAG_RAIL_OPTICAL_BIAS` nudge upward so the label's cap-height
+  // weight — not its geometric centre — sits on the rail line. Drop the
+  // bias to 0 and the pills look 1–2 px low even though they're
+  // arithmetically centered.
+  const tagLineY =
+    TAG_RAIL_H / 2 - TAG_PILL_ALIGN + TAG_RAIL_OPTICAL_BIAS;
   const tagCurve = line({
     x1: 6,
     y1: tagLineY,
@@ -298,13 +314,13 @@ export function Playground({ state, onFrameLayout }: PlaygroundProps) {
               distribute={state.tagDistribute}
               gap={tokens.space.sm}
               orient="upright"
-              align={3}
+              align={TAG_PILL_ALIGN}
             >
               {tags.map((label) => (
                 <Pill
                   key={label}
                   textStyle={tokens.type.caption}
-                  height={22}
+                  height={TAG_PILL_HEIGHT}
                   origin="center"
                   fill={tokens.color.surfaceMuted}
                   textFill={tokens.color.inkMuted}

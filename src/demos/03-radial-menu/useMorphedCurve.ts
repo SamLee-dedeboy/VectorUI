@@ -23,11 +23,15 @@ export function useMorphedCurve(
   kind: CurveKind,
   scene: CurveScene,
   durationMs = 360,
+  samples?: number,
 ): CurvePoint[] {
   const reduced = usePrefersReducedMotion();
 
   // Target vertices for the current `kind` — recomputed only when inputs change.
-  const target = useMemo(() => curvePoints(kind, scene), [kind, scene]);
+  const target = useMemo(
+    () => curvePoints(kind, scene, samples),
+    [kind, scene, samples],
+  );
 
   const [points, setPoints] = useState<CurvePoint[]>(target);
   // Latest emitted points, snapshotted at the start of each tween.

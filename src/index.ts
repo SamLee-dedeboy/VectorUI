@@ -112,6 +112,7 @@ export {
 } from "./layout/curveMorph";
 export {
   sampleBandMax,
+  sampleBand,
   intrusionFromReach,
   combineIntrusions,
   BAND_SAMPLE_STEPS,
@@ -120,6 +121,7 @@ export type {
   ReachFn,
   IntrusionFn,
   IntrusionFromReachOptions,
+  SampleBandResult,
 } from "./layout/intrusionSampling";
 export { floatAroundRect } from "./layout/rectIntrusion";
 export type {
@@ -127,6 +129,15 @@ export type {
   FloatAroundRectOptions,
   RectIntrusionPair,
 } from "./layout/rectIntrusion";
+export { pathWalkerFromData } from "./layout/pathWalker";
+export type { PathWalker } from "./layout/pathWalker";
+export { intrusionFromPath } from "./layout/intrusionFromPath";
+export type {
+  IntrusionFromPathSide,
+  IntrusionFromPathOptions,
+} from "./layout/intrusionFromPath";
+export { curveFromPath } from "./layout/curveFromPath";
+export type { CurveFromPathOptions } from "./layout/curveFromPath";
 
 // Shape kit — reusable shape providers (paths + matching FlowAround profiles).
 export * from "./shapes";

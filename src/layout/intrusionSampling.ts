@@ -49,6 +49,38 @@ export function sampleBandMax(
   return max;
 }
 
+/** Result of `sampleBand`. `hit` is true if any sample was inside the float
+ *  (i.e. `reach(y) >= 0`). `max` is the widest positive reach, or 0 when no
+ *  sample was inside or the float reach was 0 throughout. */
+export type SampleBandResult = { max: number; hit: boolean };
+
+/**
+ * Same scan as `sampleBandMax`, but also tells you whether *any* sample
+ * actually landed inside the float. Useful when "no contact" means
+ * something different from "zero intrusion" — e.g. a sloped float where
+ * a row that doesn't touch the slope should add no padding at all, while
+ * a row that grazes it should add the full breathing space. `triangleFloat`
+ * uses this; the inline version it had before this helper landed was
+ * literally this loop plus a `hit` flag.
+ */
+export function sampleBand(
+  reach: ReachFn,
+  yTop: number,
+  yBottom: number,
+  steps: number = BAND_SAMPLE_STEPS,
+): SampleBandResult {
+  let max = 0;
+  let hit = false;
+  for (let i = 0; i <= steps; i++) {
+    const y = yTop + ((yBottom - yTop) * i) / steps;
+    const v = reach(y);
+    if (v < 0) continue;
+    hit = true;
+    if (v > max) max = v;
+  }
+  return { max, hit };
+}
+
 export type IntrusionFromReachOptions = {
   /** Band-sample count. Defaults to `BAND_SAMPLE_STEPS`. */
   steps?: number;

@@ -1,5 +1,5 @@
 import { wobbleAt } from "./wobble";
-import { sampleBandMax } from "../layout/intrusionSampling";
+import { sampleBand, sampleBandMax } from "../layout/intrusionSampling";
 import type { IntrusionFn } from "../layout/intrusionSampling";
 
 /**
@@ -189,7 +189,9 @@ export function triangleFloat(opts: TriangleFloatOptions): TriangleFloat {
    * the widest reach and whether any sample actually hit the triangle —
    * padding is only added when the line genuinely intersects a slope, so a
    * line entirely below the base reads as zero intrusion (no path, no
-   * padding to keep clear of).
+   * padding to keep clear of). `sampleBand` from the library does the loop
+   * and the hit-detection bookkeeping; the only triangle-specific bit is
+   * mapping the slope-x to either a reach (left) or `width - reach` (right).
    */
   const buildIntrusion =
     (
@@ -200,18 +202,16 @@ export function triangleFloat(opts: TriangleFloatOptions): TriangleFloat {
       transformReach: (r: number) => number,
     ): IntrusionFn =>
     (yTop, yBottom) => {
-      let max = 0;
-      let hit = false;
-      const STEPS = 6;
-      for (let i = 0; i <= STEPS; i++) {
-        const colY = yTop + ((yBottom - yTop) * i) / STEPS;
-        const triY = colY - offsetY;
-        const v = slopeXAt(triY);
-        if (v < 0) continue;
-        hit = true;
-        const reach = transformReach(v);
-        if (reach > max) max = reach;
-      }
+      const { max, hit } = sampleBand(
+        (colY) => {
+          const v = slopeXAt(colY - offsetY);
+          // -1 sentinel ("outside the triangle band") flows through sampleBand
+          // as "not hit"; transformReach is only invoked on positive samples.
+          return v < 0 ? -1 : transformReach(v);
+        },
+        yTop,
+        yBottom,
+      );
       if (!hit) return 0;
       return Math.max(0, offsetX + max + padding);
     };
