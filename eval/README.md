@@ -10,8 +10,22 @@ to author UI?".
 ```bash
 cd eval
 npm install                                            # one-time
-ANTHROPIC_API_KEY=sk-... npm run eval -- tasks/01-callout-card.md
+# Save the API key once (gitignored, persists across runs):
+echo 'ANTHROPIC_API_KEY=sk-ant-...' > .env
+chmod 600 .env
+
+npm run eval -- tasks/01-callout-card.md
 ```
+
+An `eval/.env` file is loaded automatically by the harness (six-line parser,
+no dotenv dep). Shell-set variables win, so a one-off `ANTHROPIC_API_KEY=... npm
+run eval …` still overrides. `.env` is already covered by the repo's
+top-level `.gitignore` — do not commit it.
+
+> **Reproducing this eval elsewhere:** you need an Anthropic API key with
+> access to `claude-sonnet-4-6` (author) and `claude-opus-4-7` (judge).
+> Drop it in `eval/.env` as above. Without a key, `EVAL_DRY_RUN=1 npm run
+> eval -- …` exercises the full pipeline against a stub author/judge.
 
 The `npm run eval` wrapper sets `TSX_TSCONFIG_PATH=../tsconfig.json` so tsx
 uses the repo's `jsx: react-jsx` setting when loading library `.tsx` files;

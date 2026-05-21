@@ -11,12 +11,43 @@
  */
 import Anthropic from "@anthropic-ai/sdk";
 import fs from "node:fs/promises";
+import { readFileSync, existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { renderCandidate } from "./render/render.ts";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, "..");
+
+/**
+ * Load `eval/.env` into `process.env` if it exists. A six-line parser
+ * (KEY=VALUE per line, `#` comments, blanks ignored) so we don't pull in
+ * a dotenv dep for the one secret this harness needs. Skip variables
+ * already set in the shell — explicit invocations win over the file.
+ */
+(function loadDotEnv() {
+  const envPath = path.join(__dirname, ".env");
+  if (!existsSync(envPath)) return;
+  const raw = readFileSync(envPath, "utf8");
+  for (const line of raw.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+    const eq = trimmed.indexOf("=");
+    if (eq <= 0) continue;
+    const key = trimmed.slice(0, eq).trim();
+    let value = trimmed.slice(eq + 1).trim();
+    // Strip surrounding quotes if present.
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      value = value.slice(1, -1);
+    }
+    // Truthy-check (not `in` — some shells pre-set the var to "" as a
+    // safety measure, which would otherwise hide the file value).
+    if (!process.env[key]) process.env[key] = value;
+  }
+})();
 
 const AUTHOR_MODEL = "claude-sonnet-4-6";
 const JUDGE_MODEL = "claude-opus-4-7";
@@ -121,7 +152,12 @@ async function callAuthor(taskPath: string): Promise<{
   source: string;
   raw: Anthropic.Message;
 }> {
-  const client = new Anthropic();
+  // dangerouslyAllowBrowser: true is the right call here even though we're
+  // in Node — jsdom (imported by the render step) sets `window`/`document`
+  // on the Node global object, which trips the SDK's browser-detection
+  // guard. The guard exists to stop browser apps from leaking the key via
+  // window.fetch interception; in Node the key never crosses that boundary.
+  const client = new Anthropic({ dangerouslyAllowBrowser: true });
   const { system, userText } = await buildAuthorPrompt(taskPath);
 
   const message = await client.messages.create({
@@ -182,7 +218,12 @@ async function callJudge(
   svg: string,
   errors: string[],
 ): Promise<{ report: JudgeReport | { raw: string; parseError: string }; raw: Anthropic.Message }> {
-  const client = new Anthropic();
+  // dangerouslyAllowBrowser: true is the right call here even though we're
+  // in Node — jsdom (imported by the render step) sets `window`/`document`
+  // on the Node global object, which trips the SDK's browser-detection
+  // guard. The guard exists to stop browser apps from leaking the key via
+  // window.fetch interception; in Node the key never crosses that boundary.
+  const client = new Anthropic({ dangerouslyAllowBrowser: true });
   const { system, userText } = await buildJudgePrompt(taskPath, source, svg, errors);
 
   const message = await client.messages.create({
