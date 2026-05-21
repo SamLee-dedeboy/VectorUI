@@ -89,6 +89,7 @@ async function listRuns(): Promise<RunMeta[]> {
   const runs: RunMeta[] = [];
   for (const id of entries) {
     if (id.startsWith(".")) continue;
+    if (id.endsWith(".json")) continue; // variance aggregates, not runs
     const parsed = parseRunId(id);
     if (!parsed) continue;
     const summary = await readJSON<Summary>(
@@ -104,6 +105,55 @@ async function listRuns(): Promise<RunMeta[]> {
   // Newest first.
   runs.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
   return runs;
+}
+
+type VarianceBatch = {
+  file: string;
+  timestamp: string;
+  task: string;
+  samples: number;
+  scored: number;
+  scores: number[];
+  mean: number;
+  min: number;
+  max: number;
+  stddev: number;
+  authorModel: string;
+  judgeModel: string;
+};
+
+async function listVariance(): Promise<VarianceBatch[]> {
+  let entries: string[];
+  try {
+    entries = await fs.readdir(RUNS_DIR);
+  } catch {
+    return [];
+  }
+  const out: VarianceBatch[] = [];
+  for (const f of entries) {
+    if (!f.endsWith("__variance.json")) continue;
+    const data = await readJSON<Omit<VarianceBatch, "file" | "timestamp">>(
+      path.join(RUNS_DIR, f),
+    );
+    if (!data) continue;
+    const tsMatch = f.match(/^(\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2})__/);
+    out.push({
+      file: f,
+      timestamp: tsMatch ? tsMatch[1] : f,
+      task: (data.task ?? "").replace(/^.*\//, "").replace(/\.md$/, ""),
+      samples: data.samples,
+      scored: data.scored,
+      scores: data.scores ?? [],
+      mean: data.mean,
+      min: data.min,
+      max: data.max,
+      stddev: data.stddev,
+      authorModel: data.authorModel,
+      judgeModel: data.judgeModel,
+    });
+  }
+  out.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+  return out;
 }
 
 // --- presentation --------------------------------------------------------
@@ -233,6 +283,15 @@ details[open] > summary { color: var(--ink); }
 }
 .kvs { font-size: 12px; color: var(--ink-muted); }
 .kvs span + span::before { content: " · "; }
+.mono-scores { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 0.02em; }
+.bar {
+  display: inline-block; vertical-align: middle; margin-left: 8px;
+  width: 96px; height: 6px; border-radius: 3px;
+  background: var(--surface-sunken); overflow: hidden;
+}
+.bar-fill { display: block; height: 100%; border-radius: 3px; background: currentColor; }
+.bar-fill.s5 { color: #166534; } .bar-fill.s4 { color: #15803d; }
+.bar-fill.s3 { color: var(--warn); } .bar-fill.s2, .bar-fill.s1, .bar-fill.s0 { color: var(--bad); }
 `;
 
 function scoreClass(s: number): string {
@@ -258,12 +317,15 @@ function shell(title: string, body: string): string {
 </html>`;
 }
 
-function renderIndex(runs: RunMeta[]): string {
+function renderIndex(runs: RunMeta[], variance: VarianceBatch[]): string {
   const body = `
     <header class="page">
       <h1>VectorUI — agent-authorability eval</h1>
-      <div class="meta">${runs.length} run${runs.length === 1 ? "" : "s"}</div>
+      <div class="meta">${variance.length} variance batch${
+        variance.length === 1 ? "" : "es"
+      } · ${runs.length} run${runs.length === 1 ? "" : "s"}</div>
     </header>
+    ${variance.length ? renderVarianceSection(variance) : ""}
     ${
       runs.length === 0
         ? `<div class="empty">
@@ -271,6 +333,7 @@ function renderIndex(runs: RunMeta[]): string {
             <p>Run <code>npm run eval -- tasks/01-callout-card.md</code> to see one here.</p>
           </div>`
         : `<div class="card">
+            <h2>All runs</h2>
             <table>
               <thead>
                 <tr>
@@ -288,6 +351,55 @@ function renderIndex(runs: RunMeta[]): string {
     }
   `;
   return shell("VectorUI eval — runs", body);
+}
+
+/** A 0–5 score as a proportional bar, coloured by band. */
+function scoreBar(score: number): string {
+  const pct = Math.max(0, Math.min(100, (score / 5) * 100));
+  return `<span class="bar"><span class="bar-fill ${scoreClass(
+    score,
+  )}" style="width:${pct}%"></span></span>`;
+}
+
+function renderVarianceSection(batches: VarianceBatch[]): string {
+  // Keep only the newest batch per task (the headline result), but show all
+  // in a compact table so older batches are still visible.
+  const rows = batches
+    .map((b) => {
+      const spread = b.scores.length
+        ? b.scores.map((s) => s.toFixed(1)).join(" ")
+        : "—";
+      return `
+      <tr class="run-row">
+        <td>${esc(b.task)}</td>
+        <td>
+          <div class="score ${scoreClass(b.mean)}">${b.mean.toFixed(2)}
+            <span class="score-out">± ${b.stddev.toFixed(2)}</span>
+          </div>
+          ${scoreBar(b.mean)}
+        </td>
+        <td class="kvs">${b.min}–${b.max}</td>
+        <td class="kvs mono-scores">${esc(spread)}</td>
+        <td class="kvs">${b.scored}/${b.samples}</td>
+      </tr>`;
+    })
+    .join("");
+  return `
+    <div class="card">
+      <h2>Variance batches — mean ± sd over N samples</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Task</th>
+            <th>Mean score</th>
+            <th>Range</th>
+            <th>Samples</th>
+            <th>N</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
 }
 
 function renderRunRow(run: RunMeta): string {
@@ -407,9 +519,9 @@ const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url ?? "/", `http://${req.headers.host}`);
     if (url.pathname === "/") {
-      const runs = await listRuns();
+      const [runs, variance] = await Promise.all([listRuns(), listVariance()]);
       res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
-      res.end(renderIndex(runs));
+      res.end(renderIndex(runs, variance));
       return;
     }
     const runMatch = url.pathname.match(/^\/run\/(.+?)\/?$/);
