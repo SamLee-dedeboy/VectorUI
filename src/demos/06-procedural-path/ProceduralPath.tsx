@@ -3,7 +3,7 @@ import { Frame } from "../../components/Frame";
 import { Text } from "../../components/Text";
 import { Pill } from "../../components/Pill";
 import { tokens } from "../../tokens";
-import { makeFlow, makeShape, type ShapeParams } from "./proceduralShape";
+import { makeFlow, makeShape, type ShapeParams } from "../../shapes";
 
 /**
  * The reusable scene: a Frame whose closed path is procedurally generated

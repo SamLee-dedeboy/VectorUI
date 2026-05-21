@@ -4,9 +4,23 @@ import { CurveSlider } from "../../components/CurveSlider";
 import { DesignSurface } from "../../components/DesignSurface";
 import { Frame } from "../../components/Frame";
 import { Text } from "../../components/Text";
+import {
+  ConstraintOverlay,
+  EdgeTick,
+  AlignGuide,
+  GapBracket,
+  RectOutline,
+} from "../../components/ConstraintOverlay";
 import { quadratic, type CurvePoint } from "../../layout/walkPath";
 import { useEditHandle } from "../../layout/editHandles";
 import { useNaturalTextWidth } from "../../layout/textWidth";
+import {
+  combineIntrusions,
+  intrusionFromReach,
+  type IntrusionFn,
+} from "../../layout/intrusionSampling";
+import { floatAroundRect } from "../../layout/rectIntrusion";
+import { makeAxisHandle, makeGapHandle } from "../../layout/constraintHelpers";
 import { Path } from "../../svg/Path";
 import { tokens } from "../../tokens";
 
@@ -157,25 +171,24 @@ function SideB() {
 //
 //   1. Scoop-tip handle. Drag → shape regenerates → body's `rightIntrusionAt`
 //      reports the new contour → Text rewraps → slot `height="content"`
-//      grows → Frame `height="auto"` stretches.
+//      grows → Frame `height="auto"` stretches. Frame `width="auto"` keeps
+//      the card snug around its content as the title's natural width changes.
 //
 //   2. Inter-slot constraint (toggled). In "Linked" mode the body's
 //      SlotSpec uses `y: { after: "title", gap }` and binds `body.x` to
 //      `title.x` — so dragging the title moves the body automatically, no
-//      second handle needed. A separate gap-handle adjusts the constraint
-//      itself.
+//      second handle needed. A separate gap-handle (built via the library
+//      `makeGapHandle` helper) adjusts the constraint itself.
 //
 //   3. Wrap-around-title (the other toggle). In "Free overlap" the body's
-//      `flowAround.intrusionAt` / `rightIntrusionAt` read the title's rect
-//      directly — drag the title into the body's column and the paragraph
-//      flows around it line-by-line. (CSS-style floats: only edge-anchored
-//      intrusion is modelled; if the title sits in the column's centre it
-//      snaps to whichever side it leans toward.)
+//      `flowAround.intrusionAt` / `rightIntrusionAt` are built from
+//      `floatAroundRect` — drag the title into the body's column and the
+//      paragraph flows around it line-by-line. The scoop's right-edge bite
+//      composes via `combineIntrusions` so the two operators never collide.
 
-const CARD_W = 360;
 const TITLE_H = 28;
-const TITLE_W = CARD_W - 40;
-const BODY_W = CARD_W - 40;
+const TITLE_W = 320;
+const BODY_W = 320;
 /** Layout-unit gap between the scoop and the body's right edge. */
 const SCOOP_INSET = 20;
 const SCOOP_MIN = 4;
@@ -186,8 +199,8 @@ const GAP_INITIAL = 12;
 const GAP_MAX = 80;
 /** Inset from the Frame's edges where draggable slots stay clamped. */
 const SAFE = 12;
-/** Loose drag bounds — the card auto-expands, so these only stop fling-drags
- *  from running off the SVG entirely. */
+/** Loose drag bounds — Frame `width="auto"` / `height="auto"` actually size
+ *  the card; these just stop fling-drags from running off the SVG. */
 const MAX_CARD_W = 720;
 const MAX_CARD_H = 720;
 
@@ -196,9 +209,9 @@ const clamp = (n: number, lo: number, hi: number) =>
 
 type LinkMode = "linked" | "free";
 
-/** Build the card's outline with a quadratic right-edge bite. The bite's
- *  vertical position tracks the body slot's top, so the scoop always meets
- *  the body's column rather than floating in space when the body moves. */
+/** The card's outline with a quadratic right-edge bite. The bite's vertical
+ *  position tracks the body slot's top so the scoop always meets the body's
+ *  column rather than floating in space when the body moves. */
 function makeScoopShape(scoopDepth: number, bodyTop: number) {
   return (w: number, h: number): string => {
     const r = 12; // corner radius
@@ -232,9 +245,9 @@ function ConstraintCascade() {
     y: TITLE_INITIAL.y + TITLE_H + GAP_INITIAL,
   });
   const [gap, setGap] = useState(GAP_INITIAL);
-  // Captured from Frame's onLayout so the visualizations and constraint
-  // math know the current resolved height.
-  const [frameH, setFrameH] = useState(200);
+  // Captured from Frame's onLayout so the visualisations and constraint math
+  // can react to the resolved size.
+  const [frameSize, setFrameSize] = useState({ width: 360, height: 200 });
 
   // Title's actual rendered width — drives the wrap-around-title math.
   // The `title` token doesn't declare letterSpacing, but other styles can;
@@ -258,91 +271,64 @@ function ConstraintCascade() {
     linkMode === "linked" ? titlePos.y + TITLE_H + gap : bodyPos.y;
   const bodyLeft = linkMode === "linked" ? titlePos.x : bodyPos.x;
 
-  // Card width auto-expands to contain the rightmost content edge. The
-  // body always wants BODY_W of column; the title takes its natural width.
-  // SAFE padding on the right keeps content off the scoop's lip.
-  const titleRightInCard =
-    titlePos.x + titleW + SAFE + Math.max(0, scoopDepth - SCOOP_INSET);
-  const bodyRightInCard = bodyLeft + BODY_W + SAFE;
-  const cardWidth = Math.max(CARD_W, titleRightInCard, bodyRightInCard);
-
   const shape = useMemo(
     () => makeScoopShape(scoopDepth, bodyTop),
     [scoopDepth, bodyTop],
   );
 
-  // Right-edge intrusion: in linked mode it's just the scoop's bite; in
-  // free overlap mode the title's rect can also intrude from the right
-  // if the title's centre sits past the body column's midline.
-  const computeScoopBite = useCallback(
-    (midY: number) => {
-      if (scoopDepth <= 0 || midY < 0 || midY > 2 * scoopDepth) return 0;
-      const t = midY / (2 * scoopDepth);
-      const biteIntrusionFromRight = 4 * scoopDepth * t * (1 - t);
-      return Math.max(0, biteIntrusionFromRight - SCOOP_INSET);
-    },
-    [scoopDepth],
-  );
+  // The scoop's right-edge bite — a closed-form parabola whose intrusion
+  // straight into the body column comes from the same quadratic the path is
+  // drawn from. `intrusionFromReach` does the band-sampling; the bite lives
+  // only inside the scoop band, so yMax keeps the sampler from asking pointless
+  // questions below it.
+  const scoopBite: IntrusionFn = useMemo(() => {
+    if (scoopDepth <= 0) return () => 0;
+    return intrusionFromReach(
+      (yLocal) => {
+        if (yLocal < 0 || yLocal > 2 * scoopDepth) return 0;
+        const t = yLocal / (2 * scoopDepth);
+        const biteFromRight = 4 * scoopDepth * t * (1 - t);
+        return Math.max(0, biteFromRight - SCOOP_INSET);
+      },
+      { yMin: 0, yMax: 2 * scoopDepth },
+    );
+  }, [scoopDepth]);
 
   /** Where the title sits relative to the body's text origin. */
-  const titleRectInBody = useMemo(() => {
-    const left = titlePos.x - bodyLeft;
-    const top = titlePos.y - bodyTop;
-    return {
-      left,
-      right: left + titleW,
-      top,
-      bottom: top + TITLE_H,
-      midX: left + titleW / 2,
-    };
-  }, [titlePos.x, titlePos.y, bodyLeft, bodyTop, titleW]);
+  const titleRectInBody = useMemo(
+    () => ({
+      left: titlePos.x - bodyLeft,
+      right: titlePos.x - bodyLeft + titleW,
+      top: titlePos.y - bodyTop,
+      bottom: titlePos.y - bodyTop + TITLE_H,
+    }),
+    [titlePos.x, titlePos.y, bodyLeft, bodyTop, titleW],
+  );
 
+  // FlowAround composes the scoop bite (always on the right) with the
+  // wrap-around-title rect (only in free mode). `combineIntrusions` is the
+  // max-at-each-band union — clean composition with no per-shape "if".
   const flowAround = useMemo(() => {
+    const rect =
+      linkMode === "free"
+        ? floatAroundRect(titleRectInBody, BODY_W)
+        : { intrusionAt: (() => 0) as IntrusionFn,
+            rightIntrusionAt: (() => 0) as IntrusionFn };
     return {
-      // Left-side intrusion: only in free overlap, and only when the title
-      // leans toward the body's left edge.
-      intrusionAt: (yTop: number, yBot: number) => {
-        if (linkMode !== "free") return 0;
-        const r = titleRectInBody;
-        if (yBot <= r.top || yTop >= r.bottom) return 0;
-        if (r.right <= 0 || r.left >= BODY_W) return 0;
-        // Float-left case: title leans toward the column's left half.
-        if (r.midX < BODY_W / 2) return Math.max(0, r.right);
-        return 0;
-      },
-      // Right-side intrusion: scoop bite ALWAYS contributes; in free mode
-      // the title may add to it from the right.
-      rightIntrusionAt: (yTop: number, yBot: number) => {
-        const midY = (yTop + yBot) / 2;
-        const scoop = computeScoopBite(midY);
-        if (linkMode !== "free") return scoop;
-        const r = titleRectInBody;
-        if (yBot <= r.top || yTop >= r.bottom) return scoop;
-        if (r.right <= 0 || r.left >= BODY_W) return scoop;
-        if (r.midX < BODY_W / 2) return scoop;
-        // Float-right case.
-        return Math.max(scoop, BODY_W - r.left);
-      },
+      intrusionAt: rect.intrusionAt,
+      rightIntrusionAt: combineIntrusions(scoopBite, rect.rightIntrusionAt),
       gap: 6,
     };
-  }, [linkMode, titleRectInBody, computeScoopBite]);
+  }, [linkMode, titleRectInBody, scoopBite]);
 
   // --- handlers ---
 
-  const onScoopDrag = useCallback(
-    (p: CurvePoint) => {
-      // Scoop is pinned to the *current* right edge — translate the dragged
-      // x back to a depth in card-relative coords.
-      const next = cardWidth - p.x;
-      setScoopDepth(clamp(next, SCOOP_MIN, SCOOP_MAX));
-    },
-    [cardWidth],
-  );
+  const cardWidth = frameSize.width;
 
   const onTitleDrag = useCallback((p: CurvePoint) => {
-    // Only the left/top clamps are hard limits — the right side is left
-    // open so the card auto-expands. An upper bound on x keeps the demo
-    // from running off the page if someone fling-drags.
+    // Only the left/top clamps are hard limits — the right side is left open
+    // so Frame `width="auto"` can grow the card. An upper bound on x keeps
+    // the demo from running off the page if someone fling-drags.
     setTitlePos({
       x: clamp(p.x, SAFE, MAX_CARD_W),
       y: clamp(p.y, SAFE, MAX_CARD_H),
@@ -355,16 +341,6 @@ function ConstraintCascade() {
       y: clamp(p.y, SAFE + TITLE_H, MAX_CARD_H),
     });
   }, []);
-
-  const onGapDrag = useCallback(
-    (p: CurvePoint) => {
-      // The gap is measured from the title's bottom; the handle's y minus
-      // (title.y + TITLE_H) gives the gap directly. Centred in the gap → ×2.
-      const newGap = (p.y - (titlePos.y + TITLE_H)) * 2;
-      setGap(clamp(newGap, 0, GAP_MAX));
-    },
-    [titlePos.y],
-  );
 
   // --- slots ---
 
@@ -415,7 +391,8 @@ function ConstraintCascade() {
         title and body are <strong>linked</strong> (body follows title via{" "}
         <code>y:&#123; after, gap &#125;</code>, with an editable gap handle)
         or <strong>free overlap</strong> (independent anchors; the body's
-        <code> flowAround</code> wraps around the title's rect).
+        <code> flowAround</code> wraps around the title's rect via the
+        library helper <code>floatAroundRect</code>).
       </p>
 
       <div
@@ -453,14 +430,16 @@ function ConstraintCascade() {
           <DesignSurface>
             <Frame
               shape={shape}
-              width={cardWidth}
+              // Frame `width="auto"` and `height="auto"` together: the card
+              // grows around whatever its slots demand, padding included.
+              width="auto"
               height="auto"
               padding={20}
               fill={tokens.color.surface}
               stroke={tokens.color.line}
               strokeWidth={1.5}
               slots={slots}
-              onLayout={({ height }) => setFrameH(height)}
+              onLayout={setFrameSize}
             >
               <Frame.Slot name="title">
                 <Text
@@ -483,15 +462,14 @@ function ConstraintCascade() {
                   overlap mode — also from the title's current rect. Drag the
                   title into this column and watch lines flow around it; flip
                   back to Linked and the title's position drives the body's
-                  position instead. Either way, the Frame's height="auto"
-                  keeps the card snug.
+                  position instead. Either way, the Frame's width="auto" and
+                  height="auto" keep the card snug.
                 </Text>
               </Frame.Slot>
             </Frame>
 
-            {/* Constraint visualization layer. Renders on top of the
-                Frame but below the handles, with pointer-events disabled
-                so it never intercepts a drag. */}
+            {/* Constraint visualisation. Pointer events disabled so it
+                never intercepts a drag. */}
             <ConstraintViz
               linkMode={linkMode}
               titlePos={titlePos}
@@ -500,14 +478,24 @@ function ConstraintCascade() {
               bodyLeft={bodyLeft}
               gap={gap}
               cardWidth={cardWidth}
-              frameH={frameH}
+              frameH={frameSize.height}
             />
 
-            {/* Scoop tip — pinned to x, anchored to the current right edge. */}
-            <ScoopHandle
-              x={cardWidth - scoopDepth}
-              y={bodyTop + scoopDepth}
-              onDrag={onScoopDrag}
+            {/* Scoop tip — axis-pinned to x, anchored to the current right
+                edge. `makeAxisHandle` builds the `point` + `onDrag` for us
+                (and does the clamp via `range`). */}
+            <RegisterHandle
+              id="scoop-tip"
+              label="Scoop depth"
+              {...makeAxisHandle({
+                read: () => scoopDepth,
+                write: setScoopDepth,
+                axis: "x",
+                fixed: bodyTop + scoopDepth,
+                toScalar: (x) => cardWidth - x,
+                toLive: (d) => cardWidth - d,
+                range: { min: SCOOP_MIN, max: SCOOP_MAX },
+              })}
             />
 
             {/* Title anchor — always draggable. */}
@@ -518,13 +506,19 @@ function ConstraintCascade() {
               onDrag={onTitleDrag}
             />
 
-            {/* Linked: a gap handle, axis-pinned to y, sitting in the
-                middle of the title-body gap. Free: a body anchor. */}
+            {/* Linked: a gap handle, axis-pinned to y, sitting in the middle
+                of the title-body gap. Free: a body anchor. */}
             {linkMode === "linked" ? (
-              <GapHandle
-                x={titlePos.x + TITLE_W / 2}
-                y={titlePos.y + TITLE_H + gap / 2}
-                onDrag={onGapDrag}
+              <RegisterHandle
+                id="gap"
+                label="Title–body gap"
+                {...makeGapHandle({
+                  topEdge: () => titlePos.y + TITLE_H,
+                  read: () => gap,
+                  write: setGap,
+                  x: titlePos.x + TITLE_W / 2,
+                  range: { min: 0, max: GAP_MAX },
+                })}
               />
             ) : (
               <SlotAnchor
@@ -545,7 +539,7 @@ function ConstraintCascade() {
           color: "#777",
         }}
       >
-        card: <strong>{Math.round(cardWidth)} × {Math.round(frameH)}</strong>
+        card: <strong>{Math.round(cardWidth)} × {Math.round(frameSize.height)}</strong>
         {" · "}scoop: <strong>{Math.round(scoopDepth)}</strong>
         {linkMode === "linked" ? (
           <>
@@ -562,9 +556,7 @@ function ConstraintCascade() {
   );
 }
 
-// --- constraint visualization ---------------------------------------------
-
-const VIZ_OPACITY = 0.5;
+// --- constraint visualisation -------------------------------------------
 
 function ConstraintViz({
   linkMode,
@@ -585,114 +577,42 @@ function ConstraintViz({
   cardWidth: number;
   frameH: number;
 }) {
-  const accent = tokens.color.accent;
-
   return (
-    <g style={{ pointerEvents: "none" }} aria-hidden>
-      {/* Right-edge "auto-grow" marker. A thin tick at the card's current
-          right edge plus a tiny label above so you can see the card width
-          changing as content pushes right. */}
-      <line
-        x1={cardWidth}
-        y1={-6}
-        x2={cardWidth}
-        y2={-2}
-        stroke={accent}
-        strokeWidth={1.5}
-        strokeOpacity={VIZ_OPACITY}
+    <ConstraintOverlay>
+      <EdgeTick
+        at={{ x: cardWidth, y: -2 }}
+        length={4}
+        label={`width: ${Math.round(cardWidth)}`}
       />
-      <text
-        x={cardWidth - 2}
-        y={-8}
-        fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace"
-        fontSize={9}
-        fill={accent}
-        fillOpacity={VIZ_OPACITY}
-        textAnchor="end"
-      >
-        width: {Math.round(cardWidth)}
-      </text>
-
       {linkMode === "linked" ? (
         <>
-          {/* Vertical alignment guide: title.x === body.x. */}
-          <line
-            x1={titlePos.x}
-            y1={titlePos.y - 4}
-            x2={bodyLeft}
-            y2={Math.min(frameH - 4, bodyTop + 100)}
-            stroke={accent}
-            strokeWidth={1}
-            strokeOpacity={VIZ_OPACITY}
-            strokeDasharray="3 3"
+          <AlignGuide
+            from={{ x: titlePos.x, y: titlePos.y - 4 }}
+            to={{
+              x: bodyLeft,
+              y: Math.min(frameH - 4, bodyTop + 100),
+            }}
+            label="x"
           />
-          {/* "x" badge near the alignment line. */}
-          <text
-            x={titlePos.x - 6}
-            y={(titlePos.y + bodyTop) / 2}
-            fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace"
-            fontSize={9}
-            fill={accent}
-            fillOpacity={VIZ_OPACITY}
-            textAnchor="end"
-            dominantBaseline="central"
-          >
-            x
-          </text>
-
-          {/* Gap bracket — two short ticks plus a vertical line, labelled. */}
-          <g
-            transform={`translate(${titlePos.x + titleW + 10} 0)`}
-            stroke={accent}
-            strokeOpacity={VIZ_OPACITY}
-            strokeWidth={1}
-            fill="none"
-          >
-            <line x1={-4} y1={titlePos.y + TITLE_H} x2={4} y2={titlePos.y + TITLE_H} />
-            <line x1={-4} y1={bodyTop} x2={4} y2={bodyTop} />
-            <line x1={0} y1={titlePos.y + TITLE_H} x2={0} y2={bodyTop} />
-            <text
-              x={6}
-              y={(titlePos.y + TITLE_H + bodyTop) / 2}
-              fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace"
-              fontSize={9}
-              fill={accent}
-              fillOpacity={VIZ_OPACITY}
-              dominantBaseline="central"
-              stroke="none"
-            >
-              gap: {Math.round(gap)}
-            </text>
-          </g>
+          <GapBracket
+            x={titlePos.x + titleW + 10}
+            top={titlePos.y + TITLE_H}
+            bottom={bodyTop}
+            label={`gap: ${Math.round(gap)}`}
+          />
         </>
       ) : (
-        <>
-          {/* Title rect outline — the wrap target. */}
-          <rect
-            x={titlePos.x - 3}
-            y={titlePos.y - 3}
-            width={titleW + 6}
-            height={TITLE_H + 6}
-            fill="none"
-            stroke={accent}
-            strokeWidth={1}
-            strokeOpacity={VIZ_OPACITY}
-            strokeDasharray="3 3"
-            rx={3}
-          />
-          <text
-            x={titlePos.x}
-            y={titlePos.y - 6}
-            fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace"
-            fontSize={9}
-            fill={accent}
-            fillOpacity={VIZ_OPACITY}
-          >
-            wrap target
-          </text>
-        </>
+        <RectOutline
+          rect={{
+            left: titlePos.x,
+            top: titlePos.y,
+            right: titlePos.x + titleW,
+            bottom: titlePos.y + TITLE_H,
+          }}
+          label="wrap target"
+        />
       )}
-    </g>
+    </ConstraintOverlay>
   );
 }
 
@@ -713,22 +633,24 @@ function SlotAnchor({
   return null;
 }
 
-function GapHandle({
-  x,
-  y,
+/**
+ * Generic registrar — wraps `useEditHandle` so the `makeAxisHandle` /
+ * `makeGapHandle` descriptors slot straight in via `{...handle}`.
+ */
+function RegisterHandle({
+  id,
+  label,
+  point,
+  axis,
   onDrag,
 }: {
-  x: number;
-  y: number;
+  id: string;
+  label?: string;
+  point: CurvePoint;
+  axis?: "x" | "y" | "free";
   onDrag: (next: CurvePoint) => void;
 }) {
-  useEditHandle({
-    id: "gap",
-    point: { x, y },
-    axis: "y",
-    label: "Title–body gap",
-    onDrag,
-  });
+  useEditHandle({ id, point, axis, label, onDrag });
   return null;
 }
 
@@ -762,27 +684,6 @@ function ModeButton({
       {children}
     </button>
   );
-}
-
-/** Registers the single scoop-tip handle. Axis-pinned so the tip can only
- *  move horizontally (the depth is the only free parameter). */
-function ScoopHandle({
-  x,
-  y,
-  onDrag,
-}: {
-  x: number;
-  y: number;
-  onDrag: (next: CurvePoint) => void;
-}) {
-  useEditHandle({
-    id: "scoop-tip",
-    point: { x, y },
-    axis: "x",
-    label: "Scoop depth",
-    onDrag,
-  });
-  return null;
 }
 
 export function Demo() {

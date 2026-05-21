@@ -118,8 +118,10 @@ export type FrameProps = Omit<
 > & {
   /** Path generator for the Frame's outline. */
   shape: ShapeGenerator;
-  /** Frame width, in layout units. */
-  width: number;
+  /** Frame width in layout units, or "auto" to derive it from slot content
+   *  (mirrors `height="auto"`: the Frame's width is the rightmost slot edge
+   *  plus `padding`). */
+  width: number | "auto";
   /** Frame height in layout units, or "auto" to derive it from slot content. */
   height: number | "auto";
   /** Named slots children render into. */
@@ -186,8 +188,9 @@ function FrameInner({
     });
   }, []);
 
-  // Resolve every slot's geometry, then the Frame height, then the path.
-  const { placements, frameHeight } = useMemo(() => {
+  // Resolve every slot's geometry, then the Frame width and height, then
+  // the path.
+  const { placements, frameHeight, frameWidth } = useMemo(() => {
     const entries = Object.entries(slots);
     const yCache = new Map<string, number>();
     const visiting = new Set<string>();
@@ -243,6 +246,26 @@ function FrameInner({
       resolvedHeight = height;
     }
 
+    // Auto width: rightmost edge across every region slot (a region's width
+    // is fixed in its spec; content-sized widths aren't a thing today, so the
+    // spec width is the truth). Anchor slots are *positioned* against the
+    // Frame's right edge — they'd create a feedback loop if they also drove
+    // the auto-width, so they're excluded. Same `padding` policy as height.
+    let resolvedWidth: number;
+    if (width === "auto") {
+      let right = 0;
+      for (const [, slot] of entries) {
+        if (slot.type === "region") {
+          right = Math.max(right, slot.x + slot.width);
+        } else if (slot.type === "html-overlay") {
+          right = Math.max(right, slot.x + slot.width);
+        }
+      }
+      resolvedWidth = right + padding;
+    } else {
+      resolvedWidth = width;
+    }
+
     // Now place every slot.
     const placed: Record<string, Placement> = {};
     for (const [name, slot] of entries) {
@@ -254,14 +277,14 @@ function FrameInner({
           kind: "region",
         };
       } else if (slot.type === "anchor") {
-        const ax = slot.x < 0 ? width + slot.x : slot.x;
+        const ax = slot.x < 0 ? resolvedWidth + slot.x : slot.x;
         const ay = slot.y < 0 ? resolvedHeight + slot.y : slot.y;
         const size = measured[name] ?? { w: 0, h: 0 };
         const { hx, vy } = ALIGN_FACTORS[slot.align ?? "top-left"];
         placed[name] = {
           tx: ax - size.w * hx,
           ty: ay - size.h * vy,
-          slotWidth: size.w || width,
+          slotWidth: size.w || resolvedWidth,
           kind: "anchor",
         };
       } else {
@@ -274,15 +297,19 @@ function FrameInner({
         };
       }
     }
-    return { placements: placed, frameHeight: resolvedHeight };
+    return {
+      placements: placed,
+      frameHeight: resolvedHeight,
+      frameWidth: resolvedWidth,
+    };
   }, [slots, measured, height, width, padding]);
 
   // The path is generated last, with the final (w, h).
-  const d = shape(width, frameHeight);
+  const d = shape(frameWidth, frameHeight);
 
   useEffect(() => {
-    onLayout?.({ width, height: frameHeight });
-  }, [onLayout, width, frameHeight]);
+    onLayout?.({ width: frameWidth, height: frameHeight });
+  }, [onLayout, frameWidth, frameHeight]);
 
   const ctx = useMemo<FrameContextValue>(
     () => ({ placements, reportSize }),
@@ -368,16 +395,24 @@ function FrameSlot({ name, children }: FrameSlotProps) {
   const placement = ctx.placements[name];
   if (!placement) throw new Error(`<Frame.Slot> — no slot named "${name}"`);
   if (placement.kind === "html-overlay") {
+    // The slot *type* is reserved in the public API so story slots in cleanly
+    // when this lands (SPEC §10 — `<foreignObject>` form controls). Today
+    // there is no rendering path — fall through to mounting children would
+    // silently skip the overlay coordinate translation, so we throw with a
+    // pointer rather than papering over it.
     throw new Error(
       `<Frame.Slot name="${name}"> — "html-overlay" slots are reserved ` +
-        "(SPEC §10) but not implemented in this phase",
+        "but not implemented yet. Use a region slot, or follow the " +
+        "html-overlay tracking issue before relying on this.",
     );
   }
 
   // Measure the rendered content (rendered bounds — see measureBounds) and
   // report it up; the Frame uses it to size content slots and place anchors.
+  // No rounding — `boundsEqual` already de-dupes sub-pixel jitter, and the
+  // round previously here cost precision on text height for no upside.
   const contentRef = useMeasuredBounds<SVGGElement>((b) =>
-    ctx.reportSize(name, { w: Math.round(b.width), h: Math.round(b.height) }),
+    ctx.reportSize(name, { w: b.width, h: b.height }),
   );
 
   return (

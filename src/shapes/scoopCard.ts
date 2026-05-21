@@ -1,4 +1,6 @@
 import { wobbleEdge } from "./wobble";
+import { intrusionFromReach } from "../layout/intrusionSampling";
+import type { IntrusionFn } from "../layout/intrusionSampling";
 
 /**
  * `scoopCard` — a card outline with a smooth concave scoop carved into its
@@ -7,8 +9,8 @@ import { wobbleEdge } from "./wobble";
  *
  * The SAME scoop function feeds the drawn path and the intrusion query, so the
  * body text provably wraps the curve that is rendered — never an approximation
- * of it (cf. `cornerBlob` in demo 1). It is what lets the card demonstrate
- * that text wrapping is not bound to a rectangle.
+ * of it (cf. `cornerBlob`). It is what lets the card demonstrate that text
+ * wrapping is not bound to a rectangle.
  *
  * An optional `wobble` amplitude jitters the four straight edges (top, right,
  * bottom, and the left's straight portions above/below the scoop) for a
@@ -35,9 +37,6 @@ export type ScoopCardOptions = {
   wobble?: number;
 };
 
-/** A `FlowAround.intrusionAt`: left intrusion over a [yTop, yBottom] band. */
-export type IntrusionProfile = (yTop: number, yBottom: number) => number;
-
 export type ScoopCard = {
   /** SVG path data for the card outline at size (w, h). */
   path: (w: number, h: number) => string;
@@ -46,7 +45,7 @@ export type ScoopCard = {
    * `flowAround`. `columnLeft`/`columnTop` give the column's top-left in card
    * space; the returned profile takes coordinates relative to the text block.
    */
-  intrusionInto: (columnLeft: number, columnTop: number) => IntrusionProfile;
+  intrusionInto: (columnLeft: number, columnTop: number) => IntrusionFn;
 };
 
 export function scoopCard(opts: ScoopCardOptions): ScoopCard {
@@ -94,19 +93,24 @@ export function scoopCard(opts: ScoopCardOptions): ScoopCard {
     return d.join(" ");
   };
 
-  const intrusionInto =
-    (columnLeft: number, columnTop: number): IntrusionProfile =>
-    (yTop, yBottom) => {
-      // Sample across the line band and take the widest reach, so a lobe
-      // never pokes through a line that nominally clears it.
-      let max = 0;
-      const STEPS = 6;
-      for (let i = 0; i <= STEPS; i++) {
-        const cardY = columnTop + yTop + ((yBottom - yTop) * i) / STEPS;
-        max = Math.max(max, scoopXAt(cardY) - columnLeft);
-      }
-      return Math.max(0, max);
-    };
+  // The intrusion uses the same `scoopXAt` the path is drawn from. The
+  // reach function is queried in column-local y (`intrusionFromReach`
+  // contract); translate to card-y by adding `columnTop`, then subtract
+  // the column's left inset to get how far the lobe pokes INTO the text
+  // column.
+  const intrusionInto = (
+    columnLeft: number,
+    columnTop: number,
+  ): IntrusionFn =>
+    intrusionFromReach(
+      (yLocal) => Math.max(0, scoopXAt(columnTop + yLocal) - columnLeft),
+      {
+        // The lobe lives inside the scoop band; clip in column-local coords
+        // so the sampler skips bands outside it.
+        yMin: scoopTop - columnTop,
+        yMax: scoopTop + scoopHeight - columnTop,
+      },
+    );
 
   return { path, intrusionInto };
 }

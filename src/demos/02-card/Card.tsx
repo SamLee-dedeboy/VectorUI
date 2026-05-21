@@ -3,7 +3,7 @@ import { Frame } from "../../components/Frame";
 import { Text, type FlowAround } from "../../components/Text";
 import { tokens } from "../../tokens";
 import { Button } from "./Button";
-import { scoopCard } from "./scoopCard";
+import { scoopCard } from "../../shapes";
 import { useTween } from "./useTween";
 
 /**
@@ -15,19 +15,36 @@ import { useTween } from "./useTween";
  * scoop, and the text re-flows live around the new curve — the demonstration
  * that wrapping in VectorUI is not bound to a rectangle. Content is all props;
  * see `demo.tsx` for example arguments.
+ *
+ * Every dimension has a sensible default but is now a prop — the card is a
+ * generator, not a fixed shape: tune `titleHeight`, `scoopHeight`, the hover
+ * gain, etc. without forking.
  */
 
 const { space, color, type, filters } = tokens;
 
-// Slot geometry, in layout units. The header is a fixed band, so the body
-// slot — and therefore the scoop's intrusion profile — sits at a known y,
-// with no measurement round-trip.
-const PAD = space.xl;
-const TITLE_H = 34;
-const HEADER_GAP = space.sm;
-const BODY_TOP = PAD + TITLE_H + HEADER_GAP;
-const SCOOP_TOP = BODY_TOP + 6;
-const SCOOP_HEIGHT = 150;
+const DEFAULTS = {
+  width: 340,
+  scoopDepth: 84,
+  /** Padding around the card's content, layout units. */
+  padding: space.xl,
+  /** Title-band height in layout units. */
+  titleHeight: 34,
+  /** Gap between the title band and the body, layout units. */
+  headerGap: space.sm,
+  /** Y of the scoop band, relative to the body's top edge. */
+  scoopTopOffset: 6,
+  /** Vertical extent of the scoop band, layout units. */
+  scoopHeight: 150,
+  /** Underlying rounded-rect corner radius. */
+  cornerRadius: 22,
+  /** Hover-tween multiplier on `scoopDepth`. 0.42 = deepens by ~42%. */
+  hoverDepthGain: 0.42,
+  /** Peak hand-drawn wobble amplitude at full hover, layout units. */
+  hoverWobblePeak: 5,
+  /** Gap between text and the scoop's edge, layout units. */
+  flowGap: space.md,
+} as const;
 
 export type CardProps = {
   /** Card width, in layout units. */
@@ -49,13 +66,28 @@ export type CardProps = {
   accent?: string;
   /** Action button label color. */
   accentInk?: string;
+
+  // --- generator knobs (defaults preserve the Demo 2 look) ---
+  padding?: number;
+  titleHeight?: number;
+  headerGap?: number;
+  /** Y of the scoop band, relative to the body slot's top edge. */
+  scoopTopOffset?: number;
+  scoopHeight?: number;
+  cornerRadius?: number;
+  /** Hover deepens the scoop by `scoopDepth * (1 + morph * hoverDepthGain)`. */
+  hoverDepthGain?: number;
+  /** Peak hand-drawn wobble amplitude at full hover. */
+  hoverWobblePeak?: number;
+  /** Gap between text and the scoop's edge, layout units. */
+  flowGap?: number;
 };
 
 export function Card({
-  width = 340,
+  width = DEFAULTS.width,
   title,
   body,
-  scoopDepth = 84,
+  scoopDepth = DEFAULTS.scoopDepth,
   actionLabel,
   onAction,
   surface = color.surface,
@@ -63,32 +95,44 @@ export function Card({
   bodyFill = color.inkMuted,
   accent = color.accent,
   accentInk = color.accentInk,
+  padding = DEFAULTS.padding,
+  titleHeight = DEFAULTS.titleHeight,
+  headerGap = DEFAULTS.headerGap,
+  scoopTopOffset = DEFAULTS.scoopTopOffset,
+  scoopHeight = DEFAULTS.scoopHeight,
+  cornerRadius = DEFAULTS.cornerRadius,
+  hoverDepthGain = DEFAULTS.hoverDepthGain,
+  hoverWobblePeak = DEFAULTS.hoverWobblePeak,
+  flowGap = DEFAULTS.flowGap,
 }: CardProps) {
   const [hovered, setHovered] = useState(false);
   // 0 → 1 on hover. The scoop deepens AND the four edges grow a hand-drawn
   // wobble, so the body text re-wraps as the contour tweens.
   const morph = useTween(hovered ? 1 : 0);
-  const depth = scoopDepth * (1 + morph * 0.42);
-  const wobble = morph * 5; // peak amplitude of the hover wobble, layout units
+  const depth = scoopDepth * (1 + morph * hoverDepthGain);
+  const wobble = morph * hoverWobblePeak;
 
-  const contentW = width - PAD * 2;
+  const contentW = width - padding * 2;
+  // The body slot stacks below the title band; the scoop tracks it.
+  const bodyTop = padding + titleHeight + headerGap;
+  const scoopTop = bodyTop + scoopTopOffset;
 
   const card = useMemo(
     () =>
       scoopCard({
-        cornerRadius: 22,
-        scoopTop: SCOOP_TOP,
-        scoopHeight: SCOOP_HEIGHT,
+        cornerRadius,
+        scoopTop,
+        scoopHeight,
         depth,
         wobble,
       }),
-    [depth, wobble],
+    [cornerRadius, scoopTop, scoopHeight, depth, wobble],
   );
-  // The body column's top-left is a fixed point in card space (PAD, BODY_TOP),
-  // so the scoop's intrusion is exact — no guessed offset.
+  // The body column's top-left is a known point in card space (`padding`,
+  // `bodyTop`), so the scoop's intrusion is exact — no guessed offset.
   const flowAround = useMemo<FlowAround>(
-    () => ({ intrusionAt: card.intrusionInto(PAD, BODY_TOP), gap: space.md }),
-    [card],
+    () => ({ intrusionAt: card.intrusionInto(padding, bodyTop), gap: flowGap }),
+    [card, padding, bodyTop, flowGap],
   );
 
   return (
@@ -96,25 +140,25 @@ export function Card({
       shape={card.path}
       width={width}
       height="auto"
-      padding={space.xl}
+      padding={padding}
       slots={{
         header: {
           type: "region",
-          x: PAD,
-          y: PAD,
+          x: padding,
+          y: padding,
           width: contentW,
-          height: TITLE_H,
+          height: titleHeight,
         },
         body: {
           type: "region",
-          x: PAD,
-          y: { after: "header", gap: HEADER_GAP },
+          x: padding,
+          y: { after: "header", gap: headerGap },
           width: contentW,
           height: "content",
         },
         actions: {
           type: "region",
-          x: PAD,
+          x: padding,
           y: { after: "body", gap: space.md },
           width: contentW,
           height: "content",

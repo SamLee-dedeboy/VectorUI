@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePrefersReducedMotion } from "../../layout/motion";
+import { lerpPoints } from "../../layout/curveMorph";
 import type { CurvePoint } from "../../layout/walkPath";
 import { curvePoints, type CurveKind, type CurveScene } from "./curves";
 
@@ -7,8 +8,9 @@ import { curvePoints, type CurveKind, type CurveScene } from "./curves";
  * Smoothly morph the curve's vertices when `kind` changes — the basis of
  * Version B's "curves animate naturally" demo. Because every curve is
  * resampled to the same number of arc-length-spaced points (see `curves.ts`),
- * morphing is just a point-by-point lerp; PathFlow then sees a continuously
- * deforming polyline and slides items along it for free.
+ * morphing is just a point-by-point lerp (`lerpPoints`, in the library);
+ * PathFlow then sees a continuously deforming polyline and slides items
+ * along it for free.
  *
  * Honors `prefers-reduced-motion`: the morph is skipped and the target
  * vertices are returned immediately (SPEC §10).
@@ -49,15 +51,7 @@ export function useMorphedCurve(
     let raf = 0;
     const tick = (now: number) => {
       const t = Math.min(1, (now - start) / durationMs);
-      const eased = easeInOut(t);
-      const next: CurvePoint[] = from.map((p, i) => {
-        const q = target[i] ?? p;
-        return {
-          x: p.x + (q.x - p.x) * eased,
-          y: p.y + (q.y - p.y) * eased,
-        };
-      });
-      setPoints(next);
+      setPoints(lerpPoints(from, target, easeInOut(t)));
       if (t < 1) raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);

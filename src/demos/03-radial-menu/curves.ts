@@ -13,6 +13,7 @@
  */
 
 import { polyline, type Curve, type CurvePoint } from "../../layout/walkPath";
+import { uniformResample } from "../../layout/curveMorph";
 
 export type CurveKind = "sine" | "square" | "straight";
 
@@ -75,43 +76,10 @@ const rawSamples = (kind: CurveKind, scene: CurveScene): CurvePoint[] => {
 };
 
 /**
- * Resample a polyline to `n + 1` vertices spaced evenly by arc length. The
- * raw samples for each curve kind have wildly different vertex counts
- * (hundreds for sine, a handful for square, two for straight); resampling to
- * a fixed length is what makes a point-by-point morph between them possible.
- */
-function uniformResample(source: CurvePoint[], n: number): CurvePoint[] {
-  if (source.length < 2) return source.slice();
-  const cumulative: number[] = [0];
-  for (let i = 1; i < source.length; i++) {
-    cumulative.push(
-      cumulative[i - 1] +
-        Math.hypot(
-          source[i].x - source[i - 1].x,
-          source[i].y - source[i - 1].y,
-        ),
-    );
-  }
-  const total = cumulative[cumulative.length - 1];
-  const out: CurvePoint[] = [];
-  for (let i = 0; i <= n; i++) {
-    const target = total === 0 ? 0 : (i / n) * total;
-    let j = 0;
-    while (j < source.length - 2 && cumulative[j + 1] < target) j++;
-    const segLen = cumulative[j + 1] - cumulative[j];
-    const t = segLen > 0 ? (target - cumulative[j]) / segLen : 0;
-    out.push({
-      x: source[j].x + (source[j + 1].x - source[j].x) * t,
-      y: source[j].y + (source[j + 1].y - source[j].y) * t,
-    });
-  }
-  return out;
-}
-
-/**
  * Evenly arc-length-resampled vertices for the chosen curve — exactly
  * `MORPH_SAMPLES + 1` of them, so the same index across two kinds picks
- * "equivalent" positions for a linear morph.
+ * "equivalent" positions for a linear morph. `uniformResample` is the
+ * library helper in `src/layout/curveMorph.ts` (promoted from this demo).
  */
 export function curvePoints(
   kind: CurveKind,

@@ -37,6 +37,20 @@ export { CurveSlider } from "./components/CurveSlider";
 export type { CurveSliderProps } from "./components/CurveSlider";
 export { DesignSurface } from "./components/DesignSurface";
 export type { DesignSurfaceProps } from "./components/DesignSurface";
+export {
+  ConstraintOverlay,
+  EdgeTick,
+  AlignGuide,
+  GapBracket,
+  RectOutline,
+} from "./components/ConstraintOverlay";
+export type {
+  ConstraintOverlayProps,
+  EdgeTickProps,
+  AlignGuideProps,
+  GapBracketProps,
+  RectOutlineProps,
+} from "./components/ConstraintOverlay";
 
 export { TokenDefs } from "./components/TokenDefs";
 
@@ -91,6 +105,32 @@ export type {
   NearestPointOptions,
 } from "./layout/walkPath";
 export {
+  uniformResample,
+  lerpPoints,
+  polylineFromPoints,
+  morphCurves,
+} from "./layout/curveMorph";
+export {
+  sampleBandMax,
+  intrusionFromReach,
+  combineIntrusions,
+  BAND_SAMPLE_STEPS,
+} from "./layout/intrusionSampling";
+export type {
+  ReachFn,
+  IntrusionFn,
+  IntrusionFromReachOptions,
+} from "./layout/intrusionSampling";
+export { floatAroundRect } from "./layout/rectIntrusion";
+export type {
+  Rect,
+  FloatAroundRectOptions,
+  RectIntrusionPair,
+} from "./layout/rectIntrusion";
+
+// Shape kit — reusable shape providers (paths + matching FlowAround profiles).
+export * from "./shapes";
+export {
   layoutParagraph,
   layoutFlowParagraph,
   getFontMetrics,
@@ -125,6 +165,16 @@ export type {
   EditHandle,
   EditModeContextValue,
 } from "./layout/editHandles";
+export {
+  makeAxisHandle,
+  makeGapHandle,
+  followerOf,
+} from "./layout/constraintHelpers";
+export type {
+  AxisHandleSpec,
+  GapHandleSpec,
+  LinkSpec,
+} from "./layout/constraintHelpers";
 export { morphPath, tokenizePath } from "./layout/morphPath";
 export {
   useViewportWidth,

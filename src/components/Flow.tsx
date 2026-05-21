@@ -10,9 +10,10 @@ import {
   computeFlowLayout,
   type FlowDirection,
   type FlowAlign,
+  type FlowDistribute,
 } from "../layout/flowLayout";
 
-export type { FlowDirection, FlowAlign };
+export type { FlowDirection, FlowAlign, FlowDistribute };
 
 /**
  * Layer 3 — `Flow`: linear layout of measured children.
@@ -36,6 +37,13 @@ export type FlowProps = Omit<SVGProps<SVGGElement>, "children"> & {
   padding?: number | [number, number];
   /** Cross-axis alignment of children. */
   align?: FlowAlign;
+  /** Main-axis distribution: `"pack"` (default), `"space-between"`, or
+   *  `"space-around"`. The two spread modes need an explicit `mainSize` —
+   *  without one, the layout falls back to `"pack"`. */
+  distribute?: FlowDistribute;
+  /** Explicit main-axis extent — required for `distribute` other than
+   *  `"pack"`. Layout never *shrinks* below this when set. */
+  mainSize?: number;
   /** Explicit cross-axis extent; defaults to the widest/tallest child. */
   crossSize?: number;
   /** Top-left of the flow, in layout units. */
@@ -51,6 +59,8 @@ export function Flow({
   gap = 0,
   padding = 0,
   align = "start",
+  distribute,
+  mainSize,
   crossSize,
   x = 0,
   y = 0,
@@ -65,6 +75,8 @@ export function Flow({
     direction,
     gap,
     align,
+    distribute,
+    mainSize,
     crossSize,
     padding: Array.isArray(padding) ? padding : [padding, padding],
   });

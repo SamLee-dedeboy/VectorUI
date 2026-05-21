@@ -91,4 +91,62 @@ describe("computeFlowLayout", () => {
     expect(layout.placements[1].ty).toBe(10); // 0 + 0 + gap
     expect(layout.height).toBe(40);
   });
+
+  it('distribute "space-between" pins the ends and equal-gaps the middles', () => {
+    const layout = computeFlowLayout(
+      [box(40, 20), box(40, 20), box(40, 20)],
+      3,
+      {
+        direction: "row",
+        gap: 0, // ignored when distribute is set
+        padding: [0, 0],
+        align: "start",
+        distribute: "space-between",
+        mainSize: 300,
+      },
+    );
+    // slack 300 - 120 = 180, between gap = 90.
+    expect(layout.placements[0].tx).toBe(0);
+    expect(layout.placements[1].tx).toBe(130); // 40 + 90
+    expect(layout.placements[2].tx).toBe(260); // 130 + 40 + 90
+    expect(layout.width).toBe(300);
+  });
+
+  it('distribute "space-around" gives equal gaps with half-slots at the ends', () => {
+    const layout = computeFlowLayout([box(40, 20), box(40, 20)], 2, {
+      direction: "row",
+      gap: 0,
+      padding: [0, 0],
+      align: "start",
+      distribute: "space-around",
+      mainSize: 200,
+    });
+    // slack 200 - 80 = 120, slot = 60, half-slot = 30.
+    expect(layout.placements[0].tx).toBe(30); // leading half-slot
+    expect(layout.placements[1].tx).toBe(130); // 30 + 40 + 60
+    expect(layout.width).toBe(200);
+  });
+
+  it("distribute falls back to pack when mainSize is omitted", () => {
+    const layout = computeFlowLayout([box(40, 20), box(40, 20)], 2, {
+      direction: "row",
+      gap: 8,
+      padding: [0, 0],
+      align: "start",
+      distribute: "space-between",
+    });
+    expect(layout.placements[1].tx).toBe(48);
+    expect(layout.width).toBe(88);
+  });
+
+  it("never shrinks below mainSize even in pack mode", () => {
+    const layout = computeFlowLayout([box(40, 20)], 1, {
+      direction: "row",
+      gap: 0,
+      padding: [0, 0],
+      align: "start",
+      mainSize: 200,
+    });
+    expect(layout.width).toBe(200);
+  });
 });

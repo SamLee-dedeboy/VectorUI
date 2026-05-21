@@ -8,7 +8,7 @@ import { Pill } from "../../components/Pill";
 import { Text } from "../../components/Text";
 import { Path } from "../../svg/Path";
 import { tokens } from "../../tokens";
-import { accent } from "./accent";
+import { accent } from "../../shapes";
 import { bodyCopy, type PlaygroundState } from "./state";
 import {
   CurveTrace,

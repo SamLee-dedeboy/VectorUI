@@ -1,4 +1,6 @@
 import { wobbleAt } from "./wobble";
+import { sampleBandMax } from "../layout/intrusionSampling";
+import type { IntrusionFn } from "../layout/intrusionSampling";
 
 /**
  * `triangleFloat` — an isoceles triangle (peak at top centre, base at bottom)
@@ -31,9 +33,6 @@ export type TriangleFloatOptions = {
   /** Outline sample count per edge — higher is smoother. */
   samples?: number;
 };
-
-/** A flowAround intrusion profile. */
-export type IntrusionFn = (yTop: number, yBottom: number) => number;
 
 export type TriangleFloat = {
   /** SVG path data for the triangle outline. */
@@ -167,18 +166,18 @@ export function triangleFloat(opts: TriangleFloatOptions): TriangleFloat {
     yTop: number,
     yBottom: number,
     offsetY: number,
-  ): number => {
-    let max = 0;
-    const STEPS = 6;
-    for (let i = 0; i <= STEPS; i++) {
-      const colY = yTop + ((yBottom - yTop) * i) / STEPS;
-      const triY = colY - offsetY;
-      const v = fn(triY);
-      if (v < 0) continue;
-      max = Math.max(max, v);
-    }
-    return max;
-  };
+  ): number =>
+    sampleBandMax(
+      (colY) => {
+        const v = fn(colY - offsetY);
+        // -1 sentinel means "outside the triangle band"; sampleBandMax skips
+        // negative samples and clamps the resulting max to 0 if every sample
+        // is outside.
+        return v < 0 ? -1 : v;
+      },
+      yTop,
+      yBottom,
+    );
 
   const intrusionInto =
     (offsetX: number, offsetY: number): IntrusionFn =>

@@ -10,6 +10,9 @@
  * All coordinates are in layout units, with the blob's top-left at (0, 0).
  */
 
+import { intrusionFromReach } from "../layout/intrusionSampling";
+import type { IntrusionFn } from "../layout/intrusionSampling";
+
 export type CornerFloat = {
   /** SVG path data for the blob outline. */
   path: string;
@@ -21,7 +24,7 @@ export type CornerFloat = {
    * Left intrusion of the blob over the vertical band [yTop, yBottom], in
    * layout units. 0 once the band clears the blob's bottom.
    */
-  intrusionAt: (yTop: number, yBottom: number) => number;
+  intrusionAt: IntrusionFn;
 };
 
 export type CornerBlobOptions = {
@@ -73,20 +76,13 @@ export function cornerBlob(opts: CornerBlobOptions = {}): CornerFloat {
   }
   path += " L 0 0 Z";
 
-  const intrusionAt = (yTop: number, yBottom: number): number => {
-    if (yBottom <= 0 || yTop >= height) return 0;
-    const lo = Math.max(0, Math.min(height, yTop));
-    const hi = Math.max(0, Math.min(height, yBottom));
-    // Sample across the band and take the widest reach, so a bump never
-    // pokes through a line that nominally sits below it.
-    let max = 0;
-    const STEPS = 6;
-    for (let i = 0; i <= STEPS; i++) {
-      const y = lo + ((hi - lo) * i) / STEPS;
-      max = Math.max(max, edgeX(y / height));
-    }
-    return max;
-  };
+  // The intrusion query uses the same `edgeX` the path is drawn from — so a
+  // bump never pokes through a line that nominally sits below it (and a line
+  // that clears the silhouette reads exactly zero).
+  const intrusionAt = intrusionFromReach((y) => edgeX(y / height), {
+    yMin: 0,
+    yMax: height,
+  });
 
   return { path, width, height, intrusionAt };
 }

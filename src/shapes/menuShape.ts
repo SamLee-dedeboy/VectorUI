@@ -1,4 +1,4 @@
-import type { ShapeGenerator } from "../../components/Frame";
+import type { ShapeGenerator } from "../components/Frame";
 
 /**
  * A vertical menu silhouette whose right edge "shelves" to the exact width of

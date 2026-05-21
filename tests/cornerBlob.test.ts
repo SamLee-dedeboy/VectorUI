@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { cornerBlob } from "../src/demos/01-text-flow/cornerBlob";
+import { cornerBlob } from "../src/shapes/cornerBlob";
 
 describe("cornerBlob", () => {
   const blob = cornerBlob({ width: 160, height: 200 });

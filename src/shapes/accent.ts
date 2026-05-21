@@ -2,11 +2,14 @@
  * The body slot's accent shape — a smooth quarter-wedge anchored in the
  * top-left of the text column. The text wraps its curved right edge.
  *
- * Mirrors the pattern set by `01-text-flow/cornerBlob.ts`: the SAME
- * parameterization that generates the rendered path also answers the
- * `intrusionAt` query the `Text` flowAround uses — so the wrap provably
- * follows the drawn curve to pixel precision, not an approximation of it.
+ * Mirrors the pattern set by `cornerBlob.ts`: the SAME parameterization that
+ * generates the rendered path also answers the `intrusionAt` query the
+ * `Text` `flowAround` uses — so the wrap provably follows the drawn curve to
+ * pixel precision, not an approximation of it.
  */
+
+import { intrusionFromReach } from "../layout/intrusionSampling";
+import type { IntrusionFn } from "../layout/intrusionSampling";
 
 const round = (n: number) => Math.round(n * 100) / 100;
 
@@ -21,7 +24,7 @@ export type Accent = {
    * Left intrusion of the accent over the vertical band [yTop, yBottom], in
    * layout units. 0 once the band clears the accent's bottom.
    */
-  intrusionAt: (yTop: number, yBottom: number) => number;
+  intrusionAt: IntrusionFn;
 };
 
 export type AccentOptions = {
@@ -59,20 +62,7 @@ export function accent({ size = 92 }: AccentOptions = {}): Accent {
     return r * (1 - t * t);
   };
 
-  const intrusionAt = (yTop: number, yBottom: number): number => {
-    if (yBottom <= 0 || yTop >= r) return 0;
-    const lo = Math.max(0, Math.min(r, yTop));
-    const hi = Math.max(0, Math.min(r, yBottom));
-    // Sample across the band; widest reach wins so a line never clips through
-    // the curve where it sags between samples.
-    let max = 0;
-    const STEPS = 6;
-    for (let i = 0; i <= STEPS; i++) {
-      const y = lo + ((hi - lo) * i) / STEPS;
-      max = Math.max(max, edgeX(y));
-    }
-    return max;
-  };
+  const intrusionAt = intrusionFromReach(edgeX, { yMin: 0, yMax: r });
 
   return { path, width: r, height: r, intrusionAt };
 }

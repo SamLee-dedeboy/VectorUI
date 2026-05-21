@@ -9,7 +9,7 @@ import {
 } from "../../layout/textWidth";
 import { getFontMetrics } from "../../layout/measureText";
 import { tokens, type TextStyle } from "../../tokens";
-import { makeMenuShape } from "./menuShape";
+import { makeMenuShape } from "../../shapes";
 import { useTweenedNumbers } from "./useTweenedNumbers";
 
 /**

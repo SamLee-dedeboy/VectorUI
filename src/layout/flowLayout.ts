@@ -11,6 +11,22 @@ import type { Bounds } from "./measureBounds";
 export type FlowDirection = "column" | "row";
 export type FlowAlign = "start" | "center" | "end";
 
+/**
+ * Main-axis distribution policy. `"pack"` (the default) packs children at the
+ * start with `gap` between them — the flex-row analogue. The two extras
+ * borrow the CSS flexbox names:
+ *
+ *  - `"space-between"`: first child at the start, last at the end, equal gap
+ *    between (degenerates to `"pack"` when given a fixed main-axis size and
+ *    only one child).
+ *  - `"space-around"`: equal gap between, plus half a gap at each end.
+ *
+ * Both require an explicit main-axis size — `mainSize`, since the layout
+ * needs something to spread *into*. Without it (or when the content overflows
+ * that size) the layout falls back to `"pack"` so the children stay readable.
+ */
+export type FlowDistribute = "pack" | "space-between" | "space-around";
+
 export type FlowLayoutOptions = {
   direction: FlowDirection;
   gap: number;
@@ -19,6 +35,10 @@ export type FlowLayoutOptions = {
   align: FlowAlign;
   /** Explicit cross-axis extent; defaults to the largest child. */
   crossSize?: number;
+  /** Main-axis distribution policy. Defaults to `"pack"`. */
+  distribute?: FlowDistribute;
+  /** Explicit main-axis extent — required for non-pack distribute modes. */
+  mainSize?: number;
 };
 
 export type FlowPlacement = { tx: number; ty: number };
@@ -50,12 +70,63 @@ export function computeFlowLayout(
   const crossStart = (b?: Bounds) => (!b ? 0 : isRow ? b.y : b.x);
 
   let widestCross = 0;
+  let totalMain = 0;
   for (let i = 0; i < count; i++) {
     widestCross = Math.max(widestCross, crossExtent(bounds[i]));
+    totalMain += mainExtent(bounds[i]);
   }
   const contentCross = opts.crossSize ?? widestCross;
 
-  let cursor = mainPad;
+  // Resolve main-axis spacing. Pack mode (and the fallback) puts a fixed
+  // `gap` between children; the spread modes compute per-position gaps from
+  // the leftover space inside `mainSize`. The fallback to pack matters when
+  // either there's no mainSize to spread into or the children already
+  // overflow it — silently stacking them is the least surprising behaviour.
+  const distribute = opts.distribute ?? "pack";
+  const mainContentArea =
+    opts.mainSize !== undefined ? opts.mainSize - mainPad * 2 : undefined;
+  const slack =
+    mainContentArea !== undefined ? mainContentArea - totalMain : undefined;
+
+  type Spacing = {
+    leading: number;
+    trailing: number;
+    gapAfter: (i: number) => number;
+  };
+  const packed: Spacing = {
+    leading: 0,
+    trailing: 0,
+    gapAfter: (i) => (i < count - 1 ? opts.gap : 0),
+  };
+
+  let spacing: Spacing = packed;
+  if (
+    distribute === "space-between" &&
+    slack !== undefined &&
+    slack >= 0 &&
+    count >= 2
+  ) {
+    const between = slack / (count - 1);
+    spacing = {
+      leading: 0,
+      trailing: 0,
+      gapAfter: (i) => (i < count - 1 ? between : 0),
+    };
+  } else if (
+    distribute === "space-around" &&
+    slack !== undefined &&
+    slack >= 0 &&
+    count >= 1
+  ) {
+    const slot = slack / count;
+    spacing = {
+      leading: slot / 2,
+      trailing: slot / 2,
+      gapAfter: (i) => (i < count - 1 ? slot : 0),
+    };
+  }
+
+  let cursor = mainPad + spacing.leading;
   const placements: FlowPlacement[] = [];
   for (let i = 0; i < count; i++) {
     const b = bounds[i];
@@ -68,7 +139,7 @@ export function computeFlowLayout(
     } else if (opts.align === "end") {
       crossOffset += contentCross - crossExtent(b);
     }
-    cursor += mainExtent(b) + (i < count - 1 ? opts.gap : 0);
+    cursor += mainExtent(b) + spacing.gapAfter(i);
     placements.push(
       isRow
         ? { tx: mainOffset, ty: crossOffset }
@@ -76,7 +147,15 @@ export function computeFlowLayout(
     );
   }
 
-  const mainTotal = cursor + mainPad;
+  // Total main extent includes the trailing slack (for `space-around`) plus
+  // the trailing padding. When a `mainSize` is set, honour it — the spread is
+  // meaningless otherwise and even pack mode shouldn't *shrink* below the
+  // requested size.
+  const naturalExtent = cursor + spacing.trailing + mainPad;
+  const mainTotal =
+    opts.mainSize !== undefined
+      ? Math.max(opts.mainSize, naturalExtent)
+      : naturalExtent;
   const crossTotal = contentCross + crossPad * 2;
   return {
     placements,

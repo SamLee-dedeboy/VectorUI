@@ -2,8 +2,7 @@ import { useMemo } from "react";
 import { VectorUIRoot } from "../../components/VectorUIRoot";
 import { Flow } from "../../components/Flow";
 import { tokens } from "../../tokens";
-import { cornerBlob } from "./cornerBlob";
-import { archFloat } from "./archFloat";
+import { cornerBlob, archFloat } from "../../shapes";
 import { TextFlow } from "./TextFlow";
 
 /**

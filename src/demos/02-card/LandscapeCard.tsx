@@ -3,8 +3,7 @@ import { Frame } from "../../components/Frame";
 import { Text, type FlowAround } from "../../components/Text";
 import { Path } from "../../svg/Path";
 import { tokens, type TextStyle } from "../../tokens";
-import { wobbleEdge } from "./wobble";
-import { triangleFloat } from "./triangleFloat";
+import { wobbleEdge, triangleFloat } from "../../shapes";
 
 /**
  * `LandscapeCard` — a hand-drawn postcard: a wobbly rectangular outline with
