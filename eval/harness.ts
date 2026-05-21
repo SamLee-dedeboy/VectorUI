@@ -15,6 +15,7 @@ import { readFileSync, existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { renderCandidate } from "./render/render.ts";
+import { renderInBrowser } from "./render/browserRender.ts";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, "..");
@@ -179,6 +180,7 @@ async function buildJudgePrompt(
   source: string,
   svg: string,
   errors: string[],
+  hasScreenshot = false,
 ): Promise<{ system: Anthropic.TextBlockParam[]; userText: string }> {
   const task = await fs.readFile(taskPath, "utf8");
   const tpl = await fs.readFile(path.join(__dirname, "prompts", "judge.md"), "utf8");
@@ -187,12 +189,21 @@ async function buildJudgePrompt(
   const taskMarker = "# Task brief";
   const idx = tpl.indexOf(taskMarker);
   const rubricPrefix = tpl.slice(0, idx).trim();
-  const tail = tpl
-    .slice(idx)
-    .replace("{{TASK}}", task)
-    .replace("{{SOURCE}}", source)
-    .replace("{{SVG}}", svg || "(no SVG rendered)")
-    .replace("{{ERRORS}}", errors.length ? errors.join("\n\n") : "(none)");
+  const screenshotNote = hasScreenshot
+    ? "\nA real-browser SCREENSHOT of the rendered output is attached as the " +
+      "first image in this message. Treat it as the ground truth for the " +
+      "**visual** dimension: judge overlap, alignment, centring, clipping, and " +
+      "spacing from the pixels, not from the markup. The markup below is " +
+      "supporting evidence for *structure*, not pixel-accuracy.\n"
+    : "";
+  const tail =
+    screenshotNote +
+    tpl
+      .slice(idx)
+      .replace("{{TASK}}", task)
+      .replace("{{SOURCE}}", source)
+      .replace("{{SVG}}", svg || "(no SVG rendered)")
+      .replace("{{ERRORS}}", errors.length ? errors.join("\n\n") : "(none)");
 
   return {
     system: [
@@ -217,6 +228,7 @@ async function callJudge(
   source: string,
   svg: string,
   errors: string[],
+  pngPath?: string | null,
 ): Promise<{ report: JudgeReport | { raw: string; parseError: string }; raw: Anthropic.Message }> {
   // dangerouslyAllowBrowser: true is the right call here even though we're
   // in Node — jsdom (imported by the render step) sets `window`/`document`
@@ -224,13 +236,25 @@ async function callJudge(
   // guard. The guard exists to stop browser apps from leaking the key via
   // window.fetch interception; in Node the key never crosses that boundary.
   const client = new Anthropic({ dangerouslyAllowBrowser: true });
-  const { system, userText } = await buildJudgePrompt(taskPath, source, svg, errors);
+  const { system, userText } = await buildJudgePrompt(taskPath, source, svg, errors, !!pngPath);
+
+  // When a real-browser screenshot exists, lead with it so the judge grades
+  // pixels (overlap, alignment, centring) — the things markup can't reveal.
+  const content: Anthropic.ContentBlockParam[] = [];
+  if (pngPath) {
+    const b64 = await fs.readFile(pngPath, { encoding: "base64" });
+    content.push({
+      type: "image",
+      source: { type: "base64", media_type: "image/png", data: b64 },
+    });
+  }
+  content.push({ type: "text", text: userText });
 
   const message = await client.messages.create({
     model: JUDGE_MODEL,
     max_tokens: 1024,
     system,
-    messages: [{ role: "user", content: userText }],
+    messages: [{ role: "user", content }],
   });
 
   const text = message.content
@@ -435,20 +459,34 @@ async function runOnce(
   const rewritten = rewriteImports(source, candidatePath);
   await fs.writeFile(candidatePath, rewritten);
 
-  // 3. Render.
-  console.log(`[harness] rendering candidate…`);
+  // 3. Render. Default: jsdom shim (fast, no browser). EVAL_BROWSER=1: a real
+  // Chromium render + screenshot, so the judge can grade visual quality.
+  const useBrowser = process.env.EVAL_BROWSER === "1";
+  console.log(`[harness] rendering candidate… (${useBrowser ? "real browser" : "jsdom"})`);
   const renderStart = Date.now();
-  const renderResult = await renderCandidate(candidatePath);
+  let svg: string;
+  let renderErrors: string[];
+  let pngPath: string | null = null;
+  if (useBrowser) {
+    const r = await renderInBrowser(candidatePath);
+    svg = r.svg;
+    renderErrors = r.errors;
+    pngPath = r.pngPath;
+  } else {
+    const r = await renderCandidate(candidatePath);
+    svg = r.svg;
+    renderErrors = r.errors;
+  }
   const renderMs = Date.now() - renderStart;
   console.log(
-    `[harness] render done in ${renderMs}ms (svg=${renderResult.svg.length} chars, errors=${renderResult.errors.length})`,
+    `[harness] render done in ${renderMs}ms (svg=${svg.length} chars, errors=${renderErrors.length}${pngPath ? ", png ✓" : ""})`,
   );
 
-  await fs.writeFile(path.join(runDir, "rendered.svg"), renderResult.svg || "");
-  if (renderResult.errors.length) {
+  await fs.writeFile(path.join(runDir, "rendered.svg"), svg || "");
+  if (renderErrors.length) {
     await fs.writeFile(
       path.join(runDir, "render-errors.txt"),
-      renderResult.errors.join("\n\n---\n\n"),
+      renderErrors.join("\n\n---\n\n"),
     );
   }
 
@@ -457,7 +495,7 @@ async function runOnce(
   const judgeStart = Date.now();
   const { report, raw: judgeRaw } = dryRun
     ? await stubJudge()
-    : await callJudge(taskPath, source, renderResult.svg, renderResult.errors);
+    : await callJudge(taskPath, source, svg, renderErrors, pngPath);
   const judgeMs = Date.now() - judgeStart;
   console.log(`[harness] judge returned in ${judgeMs}ms`);
 
@@ -471,7 +509,7 @@ async function runOnce(
     authorModel: AUTHOR_MODEL,
     judgeModel: JUDGE_MODEL,
     timings: { authorMs, renderMs, judgeMs },
-    renderErrors: renderResult.errors.length,
+    renderErrors: renderErrors.length,
     judgeReport: report,
   };
   await fs.writeFile(path.join(runDir, "summary.json"), JSON.stringify(summary, null, 2));

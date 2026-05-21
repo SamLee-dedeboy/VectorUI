@@ -257,6 +257,7 @@ table tr.run-row[data-href] { cursor: pointer; }
   overflow: auto;
 }
 .svg-host svg { max-width: 100%; height: auto; }
+.svg-host img { max-width: 100%; height: auto; background: #fff; border-radius: 4px; }
 pre.code {
   background: #0f1115; color: #e6e6e1;
   font: 12px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -448,14 +449,25 @@ function renderRunRow(run: RunMeta): string {
   `;
 }
 
+async function fileExists(p: string): Promise<boolean> {
+  try {
+    await fs.access(p);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function renderRun(run: RunMeta): Promise<string> {
   const dir = path.join(RUNS_DIR, run.id);
-  const [taskMd, candidateSrc, renderedSvg, renderErrors] = await Promise.all([
-    readText(path.join(TASKS_DIR, run.task + ".md")),
-    readText(path.join(dir, "Eval.raw.tsx")),
-    readText(path.join(dir, "rendered.svg")),
-    readText(path.join(dir, "render-errors.txt")),
-  ]);
+  const [taskMd, candidateSrc, renderedSvg, renderErrors, hasPng] =
+    await Promise.all([
+      readText(path.join(TASKS_DIR, run.task + ".md")),
+      readText(path.join(dir, "Eval.raw.tsx")),
+      readText(path.join(dir, "rendered.svg")),
+      readText(path.join(dir, "render-errors.txt")),
+      fileExists(path.join(dir, "rendered.png")),
+    ]);
   const s = run.summary;
   const report = s?.judgeReport;
   const hasScore = report && "score" in (report as object);
@@ -518,8 +530,19 @@ async function renderRun(run: RunMeta): Promise<string> {
     </div>
 
     <div class="card">
-      <h2>Rendered output</h2>
-      <div class="svg-host">${renderedSvg ?? "<em>no rendered svg</em>"}</div>
+      <h2>Rendered output${hasPng ? " — real browser" : " — jsdom shim"}</h2>
+      <div class="svg-host">${
+        hasPng
+          ? `<img src="/run/${esc(run.id)}/rendered.png" alt="rendered output" />`
+          : (renderedSvg ?? "<em>no rendered svg</em>")
+      }</div>
+      ${
+        hasPng
+          ? `<details><summary>jsdom SVG markup</summary><pre class="code">${esc(
+              renderedSvg ?? "",
+            )}</pre></details>`
+          : ""
+      }
     </div>
 
     ${
@@ -548,6 +571,25 @@ const server = http.createServer(async (req, res) => {
       const [runs, variance] = await Promise.all([listRuns(), listVariance()]);
       res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
       res.end(renderIndex(runs, variance));
+      return;
+    }
+    // Serve a run's screenshot PNG.
+    const pngMatch = url.pathname.match(/^\/run\/(.+?)\/rendered\.png$/);
+    if (pngMatch) {
+      const id = decodeURIComponent(pngMatch[1]);
+      if (!parseRunId(id)) {
+        res.writeHead(404, { "content-type": "text/plain" });
+        res.end("not found");
+        return;
+      }
+      try {
+        const png = await fs.readFile(path.join(RUNS_DIR, id, "rendered.png"));
+        res.writeHead(200, { "content-type": "image/png" });
+        res.end(png);
+      } catch {
+        res.writeHead(404, { "content-type": "text/plain" });
+        res.end("no screenshot");
+      }
       return;
     }
     const runMatch = url.pathname.match(/^\/run\/(.+?)\/?$/);

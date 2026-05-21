@@ -36,8 +36,31 @@ for verifying the jsdom + shim pipeline after a library bump.
 
 `npm run viewer` starts a tiny http server (default :5182) that lists every
 run under `runs/` and renders the score, breakdown, reasoning, rendered
-SVG, and candidate source in one page. SSR template literals — no build
+output, and candidate source in one page. SSR template literals — no build
 step, no client framework. Override the port with `EVAL_VIEWER_PORT`.
+
+## Render fidelity: jsdom (default) vs real browser
+
+By default the candidate renders in **jsdom** with synthetic `getBBox` /
+`measureText` shims — fast, no browser, no API of its own — but it can't
+catch *visual* defects (overlap, mis-centring, clipping): a structurally
+correct wiring can still look broken. The judge then grades from markup,
+so a clean wiring scores high even if the pixels are ugly.
+
+Set **`EVAL_BROWSER=1`** to render the candidate in a real headless Chrome
+(via `playwright-core` + the system Chrome channel; boots Vite
+programmatically, mounts the actual component, screenshots the `<svg>` to
+`rendered.png`). The screenshot is then handed to the judge as an image so
+it grades the **visual** dimension from pixels. Slower (~a Vite boot + a
+Chromium launch per sample) but it sees what the user sees.
+
+```bash
+EVAL_BROWSER=1 npm run eval -- tasks/02-arc-menu.md          # one real render
+EVAL_BROWSER=1 EVAL_SAMPLES=5 npm run eval -- tasks/01-callout-card.md
+```
+
+The viewer shows the PNG (labelled "real browser") when present, with the
+jsdom SVG markup tucked behind a disclosure.
 
 Each run lands in `runs/<timestamp>__<task>/`:
 
