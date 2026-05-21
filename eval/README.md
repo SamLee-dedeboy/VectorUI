@@ -34,6 +34,11 @@ uses the repo's `jsx: react-jsx` setting when loading library `.tsx` files;
 `npm run smoke` renders a known-good candidate (no Anthropic call) — handy
 for verifying the jsdom + shim pipeline after a library bump.
 
+`npm run viewer` starts a tiny http server (default :5182) that lists every
+run under `runs/` and renders the score, breakdown, reasoning, rendered
+SVG, and candidate source in one page. SSR template literals — no build
+step, no client framework. Override the port with `EVAL_VIEWER_PORT`.
+
 Each run lands in `runs/<timestamp>__<task>/`:
 
 | file | what |

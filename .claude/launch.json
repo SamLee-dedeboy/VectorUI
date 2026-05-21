@@ -6,6 +6,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
       "port": 5181
+    },
+    {
+      "name": "eval-viewer",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "viewer", "--prefix", "eval"],
+      "port": 5182
     }
   ]
 }
