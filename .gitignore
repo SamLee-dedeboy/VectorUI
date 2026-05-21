@@ -26,3 +26,6 @@ pnpm-debug.log*
 .env
 .env.*
 !.env.example
+
+# Claude Code agent worktrees (transient checkouts, not project files)
+.claude/worktrees/
