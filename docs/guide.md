@@ -243,8 +243,8 @@ with its sibling. `padding` and `align` are first-class.
 | `padding` | `number \| [number, number]` | `0` | All sides, or `[vertical, horizontal]`. |
 | `align` | `"start" \| "center" \| "end"` | `"start"` | Cross-axis alignment. |
 | `distribute` | `"pack" \| "space-between" \| "space-around"` | `"pack"` | Main-axis distribution (the flexbox names). |
-| `mainSize` | `number` | — | Main-axis extent to spread into. **Required** for non-`pack` distribute. |
-| `crossSize` | `number` | widest child | Explicit cross-axis extent. |
+| `mainSize` | `number \| "100%"` | — | Main-axis extent to spread into. **Required** for non-`pack` distribute. `"100%"` fills the enclosing Frame slot's width (rows). |
+| `crossSize` | `number \| "100%"` | widest child | Explicit cross-axis extent. `"100%"` fills the slot width (columns). |
 | `x`, `y` | `number` | `0` | Top-left, layout units. |
 | `onMeasure` | `(size) => void` | — | Reports the flow's resolved size. |
 
@@ -263,6 +263,15 @@ with its sibling. `padding` and `align` are first-class.
   <Pill …>Learn more</Pill>
   <Pill …>Got it</Pill>
 </Flow>
+
+// Inside a Frame slot, let `mainSize="100%"` read the slot's width — no
+// content-width arithmetic, the same way Text uses maxWidth="100%". This is
+// the idiomatic way to distribute a row across an auto-width card.
+<Frame.Slot name="actions">
+  <Flow direction="row" distribute="space-between" mainSize="100%">
+    <Pill …>Dismiss</Pill><Pill …>Learn more</Pill><Pill …>Got it</Pill>
+  </Flow>
+</Frame.Slot>
 ```
 
 > `Flow.distribute` (`pack`/`space-between`/`space-around`) governs the
