@@ -120,6 +120,7 @@ type VarianceBatch = {
   stddev: number;
   authorModel: string;
   judgeModel: string;
+  runIds: string[];
 };
 
 async function listVariance(): Promise<VarianceBatch[]> {
@@ -150,6 +151,7 @@ async function listVariance(): Promise<VarianceBatch[]> {
       stddev: data.stddev,
       authorModel: data.authorModel,
       judgeModel: data.judgeModel,
+      runIds: data.runIds ?? [],
     });
   }
   out.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
@@ -219,6 +221,9 @@ table th {
 }
 table tr:last-child td { border-bottom: none; }
 table tr.run-row:hover td { background: var(--surface-sunken); }
+table tr.run-row[data-href] { cursor: pointer; }
+.hint { margin: -4px 0 12px; font-size: 12px; color: var(--ink-muted); }
+.mono-scores a { font-weight: 600; }
 .score {
   display: flex; align-items: baseline; gap: 8px;
   font: 600 13px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -366,9 +371,24 @@ function renderVarianceSection(batches: VarianceBatch[]): string {
   // in a compact table so older batches are still visible.
   const rows = batches
     .map((b) => {
+      // Each per-sample score links to that sample's detail page (where the
+      // rendered SVG of the agent's interface lives). Falls back to plain
+      // text if a runId is missing.
       const spread = b.scores.length
-        ? b.scores.map((s) => s.toFixed(1)).join(" ")
+        ? b.scores
+            .map((s, i) => {
+              const id = b.runIds[i];
+              const label = s.toFixed(1);
+              return id
+                ? `<a href="/run/${esc(id)}">${label}</a>`
+                : label;
+            })
+            .join(" ")
         : "—";
+      const firstId = b.runIds[0];
+      const view = firstId
+        ? `<a href="/run/${esc(firstId)}">view →</a>`
+        : "";
       return `
       <tr class="run-row">
         <td>${esc(b.task)}</td>
@@ -379,14 +399,18 @@ function renderVarianceSection(batches: VarianceBatch[]): string {
           ${scoreBar(b.mean)}
         </td>
         <td class="kvs">${b.min}–${b.max}</td>
-        <td class="kvs mono-scores">${esc(spread)}</td>
+        <td class="kvs mono-scores">${spread}</td>
         <td class="kvs">${b.scored}/${b.samples}</td>
+        <td class="kvs">${view}</td>
       </tr>`;
     })
     .join("");
   return `
     <div class="card">
       <h2>Variance batches — mean ± sd over N samples</h2>
+      <p class="hint">Click any per-sample score, a run timestamp below, or
+        “view” to open that run — each detail page shows the rendered
+        interface the agent produced.</p>
       <table>
         <thead>
           <tr>
@@ -395,6 +419,7 @@ function renderVarianceSection(batches: VarianceBatch[]): string {
             <th>Range</th>
             <th>Samples</th>
             <th>N</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>${rows}</tbody>
@@ -412,9 +437,10 @@ function renderRunRow(run: RunMeta): string {
       ? `<span class="score-out">—</span>`
       : `<div class="score ${scoreClass(score)}">${score.toFixed(1)} <span class="score-out">/ 5</span></div>`;
   const models = s ? `${s.authorModel} → ${s.judgeModel}` : "—";
+  const href = `/run/${esc(run.id)}`;
   return `
-    <tr class="run-row">
-      <td><a href="/run/${esc(run.id)}">${esc(run.timestamp)}</a></td>
+    <tr class="run-row" data-href="${href}" onclick="location.href='${href}'">
+      <td><a href="${href}">${esc(run.timestamp)}</a></td>
       <td>${esc(run.task)}</td>
       <td>${scoreCell}</td>
       <td class="kvs">${esc(models)}</td>
