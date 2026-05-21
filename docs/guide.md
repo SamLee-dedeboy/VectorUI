@@ -160,21 +160,27 @@ once (e.g. poured through an archway).
 ## 6. `Frame` — shape as container
 
 A `Frame` is a closed path plus **named slots**. Children render into slots via
-`<Frame.Slot name="…">`. The path is generated *after* layout, so a
-`height="auto"` Frame shrink-wraps its content.
+`<Frame.Slot name="…">`. The path is generated *after* layout, so an
+`"auto"` Frame shrink-wraps its content.
 
 | Prop | Type | Default | Notes |
 |------|------|---------|-------|
 | `shape` | `(w, h) => string` | — | Path generator. Use `tokens.shapes.*`. |
-| `width` | `number` | — | Layout units. |
-| `height` | `number \| "auto"` | — | `"auto"` derives height from the slots. |
+| `width` | `number \| "auto"` | — | Layout units, or `"auto"` to shrink-wrap to the rightmost slot edge + `padding`. |
+| `height` | `number \| "auto"` | — | Layout units, or `"auto"` to shrink-wrap to the lowest slot edge + `padding`. |
 | `slots` | `Record<string, SlotSpec>` | — | Named slot definitions (below). |
 | `fill`, `stroke`, `strokeWidth` | | | For the shape path. |
 | `filter` | `string` | — | e.g. `tokens.filters.softShadow`. |
 | `title` | `string` | — | Rendered as a leading `<title>` for screen readers. |
-| `padding` | `number` | `0` | Bottom inset when `height="auto"`. |
+| `padding` | `number` | `0` | Inset added past the lowest/rightmost slot under `"auto"`. |
 | `hitPath` | `string` | — | Optional enlarged hit region. |
 | `onLayout` | `(size) => void` | — | Reports the resolved Frame size. |
+
+> `width="auto"` and `height="auto"` are independent and combine — a Frame can
+> grow in both axes at once to wrap its content. (Distinct from
+> `VectorUIRoot`'s `width="auto"`, which is a *coordinate-scale* mode, §[4](#4-vectoruiroot), not a
+> shrink-wrap.) Auto-width measures region/overlay slots only — anchor slots
+> are positioned *against* the resolved edge, so they don't drive it.
 
 ### Slot specs
 
@@ -236,6 +242,8 @@ with its sibling. `padding` and `align` are first-class.
 | `gap` | `number` | `0` | Between children, layout units. |
 | `padding` | `number \| [number, number]` | `0` | All sides, or `[vertical, horizontal]`. |
 | `align` | `"start" \| "center" \| "end"` | `"start"` | Cross-axis alignment. |
+| `distribute` | `"pack" \| "space-between" \| "space-around"` | `"pack"` | Main-axis distribution (the flexbox names). |
+| `mainSize` | `number` | — | Main-axis extent to spread into. **Required** for non-`pack` distribute. |
 | `crossSize` | `number` | widest child | Explicit cross-axis extent. |
 | `x`, `y` | `number` | `0` | Top-left, layout units. |
 | `onMeasure` | `(size) => void` | — | Reports the flow's resolved size. |
@@ -246,7 +254,21 @@ with its sibling. `padding` and `align` are first-class.
   <Text {...tokens.type.body}  maxWidth="100%">Body…</Text>
   <Button>Action</Button>
 </Flow>
+
+// A row of buttons pushed to the two ends, evenly gapped — give it the
+// width to spread into via `mainSize`. (Without `mainSize`, distribute
+// silently falls back to `pack`.)
+<Flow direction="row" distribute="space-between" mainSize={contentWidth}>
+  <Pill …>Dismiss</Pill>
+  <Pill …>Learn more</Pill>
+  <Pill …>Got it</Pill>
+</Flow>
 ```
+
+> `Flow.distribute` (`pack`/`space-between`/`space-around`) governs the
+> *straight-line* main axis. `PathFlow.distribute` (§[8](#8-pathflow--layout-along-a-curve)) is a different
+> vocabulary (`even`/`start`/`end`/`spread`) for spacing along a *curve* —
+> `spread` there is the curve analogue of `space-between` here.
 
 `Flow` is the answer to "stack things"; reach for `Frame` only when you need a
 shape *around* the content, and `PathFlow` only for genuinely curved layout.
@@ -297,12 +319,16 @@ layout units — no `scale` math) and centers it.
 | `origin` | `"top-left" \| "center"` | `"top-left"` | `"center"` for placement on a curve/point. |
 | …`SVGProps` | | | `role`, `onClick`, etc. — `Pill` is presentational; wire interaction through these. |
 
-### Layer 1 — `Group`, `Path`, `TextLine`
+### Layer 1 — `Group`, `Path`, `Circle`, `TextLine`
 
 Thin SVG wrappers, for escape-hatch rendering:
 
 - **`Group`** — a semantic `<g>`.
 - **`Path`** — a `<path>`; `decorative` (default `true`) makes it `aria-hidden`.
+- **`Circle`** — a `<circle>` for discs (badges, dots, avatars); `r`/`cx`/`cy`
+  in layout units, `cx`/`cy` default to 0 so it's centred on its own origin
+  (handy when a parent places that origin on a point). Don't hand-roll an arc
+  path for a plain circle.
 - **`TextLine`** — one pre-positioned line of `<text>` (the layout engine uses it).
 
 ---
@@ -400,12 +426,17 @@ heights** — the scene sizes itself.
 
 ### Text wrapping a shape
 
+`flowAround.intrusionAt(yTop, yBottom)` reports, in layout units, how far a
+float reaches into each line band. The **shape kit** (public, imported from
+`"vectorui"`) returns a path paired with a matching `intrusionAt` — use them
+as a unit: `cornerBlob`, `accent`, `archFloat` (two-sided), `scoopCard`,
+`triangleFloat`. The coordinate space for `intrusionAt` is the **Text block's
+own** — `(0, 0)` is the Text's top-left, so build floats relative to that, not
+to the scene.
+
 ```tsx
-// `flowAround.intrusionAt(yTop, yBottom)` reports, in layout units, how far
-// the float reaches into each line band. Demo 1's `cornerBlob` helper
-// (src/demos/01-text-flow/cornerBlob.ts — not part of the public API)
-// returns both the path and a matching intrusionAt; supply your own for
-// any shape.
+import { cornerBlob } from "vectorui";
+
 const blob = cornerBlob({ width: 96, height: 104 });
 <g>
   <Path d={blob.path} fill={tokens.color.accentSoft} />
@@ -415,6 +446,35 @@ const blob = cornerBlob({ width: 96, height: 104 });
   </Text>
 </g>
 ```
+
+#### Wrapping a rectangle, and combining floats
+
+For a rectangular float (an image, a callout, a pinned tag), `floatAroundRect`
+builds the CSS-`float`-style profile. Its **rect is in the Text block's
+coordinate space**, and accepts either `{ x, y, width, height }` or
+`{ left, top, right, bottom }`. Compose multiple floats on the same side with
+`combineIntrusions`.
+
+```tsx
+import { floatAroundRect, combineIntrusions } from "vectorui";
+
+// Two callouts floated left at different heights, in Text-local coords.
+const a = floatAroundRect({ x: 0, y: 0,   width: 64,  height: 64 }, 360);
+const b = floatAroundRect({ x: 0, y: 140, width: 120, height: 40 }, 360);
+
+<Text {...tokens.type.body} maxWidth={360}
+      flowAround={{ intrusionAt: combineIntrusions(a.intrusionAt, b.intrusionAt) }}>
+  …text indents past whichever callout it's beside, full width between them…
+</Text>
+```
+
+`floatAroundRect(rect, columnWidth, opts?)` — `columnWidth` is the second
+positional arg (it's what the right-side intrusion is measured from);
+`opts.mode` is `"auto" | "left" | "right" | "none"` and `opts.padding` adds
+breathing room around the rect. It returns `{ intrusionAt, rightIntrusionAt }`;
+a left-leaning rect populates `intrusionAt`, a right-leaning one
+`rightIntrusionAt`. To wrap text around a non-analytical / imported SVG path,
+`intrusionFromPath(d, side, { width, height })` samples its silhouette.
 
 ### Animation
 

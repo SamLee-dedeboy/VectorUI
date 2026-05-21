@@ -70,6 +70,8 @@ export { Group } from "./svg/Group";
 export type { GroupProps } from "./svg/Group";
 export { Path } from "./svg/Path";
 export type { PathProps } from "./svg/Path";
+export { Circle } from "./svg/Circle";
+export type { CircleProps } from "./svg/Circle";
 export { TextLine } from "./svg/TextLine";
 export type { TextLineProps } from "./svg/TextLine";
 
@@ -126,6 +128,8 @@ export type {
 export { floatAroundRect } from "./layout/rectIntrusion";
 export type {
   Rect,
+  RectEdges,
+  RectBox,
   FloatAroundRectOptions,
   RectIntrusionPair,
 } from "./layout/rectIntrusion";

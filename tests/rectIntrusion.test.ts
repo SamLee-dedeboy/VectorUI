@@ -59,6 +59,20 @@ describe("floatAroundRect", () => {
     expect(rightIntrusionAt(15, 25)).toBe(0);
   });
 
+  it("accepts the {x,y,width,height} rect form identically to edges", () => {
+    const edges = floatAroundRect(
+      { left: 0, top: 10, right: 60, bottom: 30 },
+      columnWidth,
+    );
+    const box = floatAroundRect(
+      { x: 0, y: 10, width: 60, height: 20 },
+      columnWidth,
+    );
+    expect(box.intrusionAt(15, 25)).toBe(edges.intrusionAt(15, 25));
+    expect(box.intrusionAt(15, 25)).toBe(60);
+    expect(box.intrusionAt(0, 9)).toBe(0);
+  });
+
   it('mode: "left" / "right" override the auto pick', () => {
     // A rect leaning right, but forced to float left.
     const rect = { left: 140, right: 200, top: 0, bottom: 20 };

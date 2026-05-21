@@ -14,13 +14,40 @@
  */
 import type { IntrusionFn } from "./intrusionSampling";
 
-/** A rectangle in the text column's coordinate space. */
-export type Rect = {
+/**
+ * A rectangle in the text column's coordinate space — `(0, 0)` is the
+ * column's top-left, the same units the column's `Text` lays out in.
+ *
+ * Accepts either edge form (`{ left, top, right, bottom }`) or the
+ * `{ x, y, width, height }` form the rest of the library uses (Frame slots,
+ * anchor specs). They're interchangeable — pass whichever you have.
+ */
+export type RectEdges = {
   left: number;
   top: number;
   right: number;
   bottom: number;
 };
+export type RectBox = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+export type Rect = RectEdges | RectBox;
+
+/** Normalise either rect form to edges. */
+function toEdges(r: Rect): RectEdges {
+  if ("width" in r) {
+    return {
+      left: r.x,
+      top: r.y,
+      right: r.x + r.width,
+      bottom: r.y + r.height,
+    };
+  }
+  return r;
+}
 
 export type FloatAroundRectOptions = {
   /**
@@ -55,12 +82,13 @@ export function floatAroundRect(
   opts: FloatAroundRectOptions = {},
 ): RectIntrusionPair {
   const { mode = "auto", padding = 0 } = opts;
+  const edges = toEdges(rect);
 
   // Padded rect — the indent target.
-  const top = rect.top - padding;
-  const bottom = rect.bottom + padding;
-  const left = rect.left - padding;
-  const right = rect.right + padding;
+  const top = edges.top - padding;
+  const bottom = edges.bottom + padding;
+  const left = edges.left - padding;
+  const right = edges.right + padding;
   const midX = (left + right) / 2;
 
   // Resolve "auto" once: a column-midX comparison is cheap but consistent
