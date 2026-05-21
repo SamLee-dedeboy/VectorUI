@@ -6,6 +6,7 @@ import {
   useNaturalTextWidth,
 } from "../layout/textWidth";
 import { getFontMetrics } from "../layout/measureText";
+import { useCoordinateScale } from "../layout/coordinateScale";
 import { tokens, type TextStyle } from "../tokens";
 
 /**
@@ -73,26 +74,34 @@ export function Pill({
   // and baseline, and Library's "y" descender simply extends below.
   const fontBox = getFontMetrics(textStyle.font);
   const cap = useActualTextMetrics("H", textStyle.font);
-  // Both formulas yield a baseline position in the *pixel* space `Text`
-  // works in. Their difference is the px (= layout-unit at scale 1) shift.
   const baselineOffsetPx =
     (cap.actAscPx - cap.actDescPx - fontBox.ascentPx + fontBox.descentPx) / 2;
+
+  // Bridge the two coordinate spaces. `height` (the pill) is in LAYOUT units;
+  // `Text.lineHeight` and the metrics above are in CSS PX. They coincide only
+  // at scale 1 — at any other viewBox scale, passing the layout-unit height
+  // straight in as a px line-height makes the line box `height/scale` tall, so
+  // the label rides high/low. Convert: the line box must be `height * scale`
+  // px to fill the pill, and the px baseline correction becomes a layout-unit
+  // `y` once divided back by scale.
+  const { scale } = useCoordinateScale();
+  const s = scale || 1;
 
   return (
     <g {...gProps}>
       <g transform={ox || oy ? `translate(${ox} ${oy})` : undefined}>
         <Path d={tokens.shapes.pill(width, height)} fill={fill} />
         {/* The label is left-aligned at paddingX (which centres it
-            horizontally since width = label + 2·paddingX). The `y` offset
-            converts font-box centring into ink-box centring — see the
-            comment above. */}
+            horizontally since width = label + 2·paddingX). `lineHeight`
+            fills the pill in px; the `y` offset converts font-box centring
+            into cap-height centring — see the comment above. */}
         <Text
           font={textStyle.font}
-          lineHeight={height}
+          lineHeight={height * s}
           letterSpacing={textStyle.letterSpacing}
           maxWidth={width}
           x={paddingX}
-          y={baselineOffsetPx}
+          y={baselineOffsetPx / s}
           fill={textFill}
         >
           {children}
