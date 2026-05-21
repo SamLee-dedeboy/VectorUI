@@ -1,0 +1,21 @@
+{
+  "name": "vectorui-eval",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Agent-authorability evaluation harness for VectorUI.",
+  "scripts": {
+    "eval": "TSX_TSCONFIG_PATH=../tsconfig.json tsx harness.ts",
+    "smoke": "TSX_TSCONFIG_PATH=../tsconfig.json tsx render/smokeTest.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.40.0",
+    "jsdom": "^25.0.1",
+    "tsx": "^4.19.2"
+  },
+  "devDependencies": {
+    "@types/jsdom": "^21.1.7",
+    "@types/node": "^22.10.5",
+    "typescript": "^5.7.2"
+  }
+}
