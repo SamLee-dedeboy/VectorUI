@@ -179,8 +179,9 @@ A `Frame` is a closed path plus **named slots**. Children render into slots via
 > `width="auto"` and `height="auto"` are independent and combine — a Frame can
 > grow in both axes at once to wrap its content. (Distinct from
 > `VectorUIRoot`'s `width="auto"`, which is a *coordinate-scale* mode, §[4](#4-vectoruiroot), not a
-> shrink-wrap.) Auto-width measures region/overlay slots only — anchor slots
-> are positioned *against* the resolved edge, so they don't drive it.
+> shrink-wrap.) Auto-width derives from **numeric-width** region/overlay slots
+> only — `"fill"` slots fill into the result, and anchor slots are positioned
+> *against* the resolved edge, so neither drives it.
 
 ### Slot specs
 
@@ -188,9 +189,9 @@ A `Frame` is a closed path plus **named slots**. Children render into slots via
 // A rectangular region. `y` may stack below another slot; height may fit content.
 type RegionSlot = {
   type: "region";
-  x: number;
+  x?: number;            // defaults to the Frame's `padding`
   y: number | { after: string; gap?: number };
-  width: number;
+  width?: number | "fill"; // defaults to "fill" — the content box
   height: number | "fill" | "content";
 };
 
@@ -205,25 +206,39 @@ type AnchorSlot = {
 };
 ```
 
+**`x` defaults to the Frame's `padding`** and **`width` defaults to `"fill"`**
+(the content box, `resolvedWidth - x - padding`) — so a slot that just sits in
+the padded content column needs neither. Under `width="auto"`, `"fill"` slots
+are *excluded* from the width derivation (they fill into the result), so one
+slot must declare a numeric `width` to anchor the Frame — that number is your
+content column; siblings `"fill"` to match it.
+
 ```tsx
+// An auto-sized card: the body declares the column width (the one number you
+// must choose for any paragraph); x defaults to padding, the actions row
+// `"fill"`s to match, and the Frame's width derives from the body + padding.
 <Frame
   shape={tokens.shapes.blob}
-  width={320}
+  width="auto"
   height="auto"
   padding={tokens.space.xl}
   slots={{
-    body:    { type: "region", x: 24, y: 24, width: 272, height: "content" },
-    actions: { type: "anchor", x: -24, y: -24, align: "bottom-right" },
+    body:    { type: "region", y: 0, width: 272, height: "content" }, // x ← padding
+    actions: { type: "region", y: { after: "body", gap: tokens.space.md },
+               height: "content" },                                   // x, width default
   }}
   fill={tokens.color.surface}
   filter={tokens.filters.softShadow}
 >
   <Frame.Slot name="body"><Text {...tokens.type.body} maxWidth="100%">…</Text></Frame.Slot>
-  <Frame.Slot name="actions"><Button>OK</Button></Frame.Slot>
+  <Frame.Slot name="actions">
+    <Flow direction="row" distribute="space-between" mainSize="100%"><Pill …/>…</Flow>
+  </Frame.Slot>
 </Frame>
 ```
 
-A `Text` with `maxWidth="100%"` inside a slot resolves to that slot's width.
+A `Text` with `maxWidth="100%"` (or a `Flow` with `mainSize="100%"`) inside a
+slot resolves to that slot's width.
 
 > Tip: for a column of content inside a Frame, put **one** region slot
 > containing a [`Flow`](#7-flow--linear-layout) rather than many stacked slots.

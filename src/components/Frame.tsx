@@ -35,15 +35,24 @@ export type SlotAfter = { after: string; gap?: number };
 
 /**
  * A rectangular region.
+ * - `x`: left edge in layout units. **Optional — defaults to the Frame's
+ *   `padding`**, so a slot that just wants to sit in the content box can omit
+ *   it (no more repeating `x: PAD` on every slot).
  * - `y`: a fixed coordinate, or `{ after }` to stack below another slot.
+ * - `width`: a number, or **`"fill"` (the default)** to fill the Frame's
+ *   content box — `resolvedWidth - x - padding`. Under `width="auto"`, fill
+ *   slots are *excluded* from the width derivation (they fill into whatever
+ *   the explicit-width slots establish), so at least one slot must declare a
+ *   numeric width to anchor an auto-width Frame. That one width is the
+ *   content column; siblings `"fill"` to match it.
  * - `height`: a number; `"content"` to fit the measured content; or `"fill"`
  *   to take the measured content (auto Frame) or the remaining height (fixed).
  */
 export type RegionSlot = {
   type: "region";
-  x: number;
+  x?: number;
   y: number | SlotAfter;
-  width: number;
+  width?: number | "fill";
   height: number | "fill" | "content";
 };
 
@@ -246,17 +255,20 @@ function FrameInner({
       resolvedHeight = height;
     }
 
-    // Auto width: rightmost edge across every region slot (a region's width
-    // is fixed in its spec; content-sized widths aren't a thing today, so the
-    // spec width is the truth). Anchor slots are *positioned* against the
-    // Frame's right edge — they'd create a feedback loop if they also drove
-    // the auto-width, so they're excluded. Same `padding` policy as height.
+    // A region slot's left edge: explicit, or the Frame's padding by default.
+    const regionX = (slot: RegionSlot): number => slot.x ?? padding;
+
+    // Auto width: rightmost edge across slots that declare a NUMERIC width.
+    // `"fill"` (and omitted) slots are excluded — they fill into whatever the
+    // explicit-width slots establish, so including them would be circular.
+    // Anchor slots are positioned *against* the resolved edge, so they don't
+    // drive it either. Same `padding` policy as height.
     let resolvedWidth: number;
     if (width === "auto") {
       let right = 0;
       for (const [, slot] of entries) {
-        if (slot.type === "region") {
-          right = Math.max(right, slot.x + slot.width);
+        if (slot.type === "region" && typeof slot.width === "number") {
+          right = Math.max(right, regionX(slot) + slot.width);
         } else if (slot.type === "html-overlay") {
           right = Math.max(right, slot.x + slot.width);
         }
@@ -266,14 +278,21 @@ function FrameInner({
       resolvedWidth = width;
     }
 
+    // A region slot's width: explicit number, or `"fill"`/omitted → the
+    // content box from its x to the right padding edge of the resolved Frame.
+    const regionWidth = (slot: RegionSlot): number => {
+      if (typeof slot.width === "number") return slot.width;
+      return Math.max(0, resolvedWidth - regionX(slot) - padding);
+    };
+
     // Now place every slot.
     const placed: Record<string, Placement> = {};
     for (const [name, slot] of entries) {
       if (slot.type === "region") {
         placed[name] = {
-          tx: slot.x,
+          tx: regionX(slot),
           ty: resolveY(name),
-          slotWidth: slot.width,
+          slotWidth: regionWidth(slot),
           kind: "region",
         };
       } else if (slot.type === "anchor") {

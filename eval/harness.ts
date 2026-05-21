@@ -333,7 +333,85 @@ async function main() {
     process.exit(1);
   }
 
-  const runId = `${timestamp()}__${taskName}`;
+  // Variance: EVAL_SAMPLES > 1 runs the task N times (the author is
+  // non-deterministic, so a single score can't resolve sub-point deltas).
+  const samples = Math.max(1, Number(process.env.EVAL_SAMPLES) || 1);
+
+  if (samples === 1) {
+    await runOnce(taskPath, taskName, dryRun);
+    return;
+  }
+
+  console.log(`[harness] variance run — ${samples} samples of ${taskName}\n`);
+  const scores: number[] = [];
+  const runIds: string[] = [];
+  for (let i = 0; i < samples; i++) {
+    console.log(`[harness] ── sample ${i + 1}/${samples} ──`);
+    const summary = await runOnce(taskPath, taskName, dryRun, i + 1);
+    runIds.push(summary.runId);
+    const r = summary.judgeReport;
+    if (r && "score" in r) scores.push(r.score);
+    console.log("");
+  }
+
+  // Aggregate.
+  const n = scores.length;
+  const mean = n ? scores.reduce((a, b) => a + b, 0) / n : NaN;
+  const min = n ? Math.min(...scores) : NaN;
+  const max = n ? Math.max(...scores) : NaN;
+  const sd = n
+    ? Math.sqrt(scores.reduce((a, b) => a + (b - mean) ** 2, 0) / n)
+    : NaN;
+  const round2 = (x: number) => Math.round(x * 100) / 100;
+
+  const variance = {
+    task: path.relative(REPO_ROOT, taskPath),
+    samples,
+    scored: n,
+    authorModel: AUTHOR_MODEL,
+    judgeModel: JUDGE_MODEL,
+    scores,
+    mean: round2(mean),
+    min,
+    max,
+    stddev: round2(sd),
+    runIds,
+  };
+  const aggPath = path.join(
+    __dirname,
+    "runs",
+    `${timestamp()}__${taskName}__variance.json`,
+  );
+  await fs.writeFile(aggPath, JSON.stringify(variance, null, 2));
+
+  console.log(`[harness] ✓ variance complete → ${path.relative(process.cwd(), aggPath)}`);
+  console.log(`[harness] scores: ${scores.map((s) => s.toFixed(1)).join(" ")}`);
+  console.log(
+    `[harness] mean ${round2(mean)}  min ${min}  max ${max}  sd ${round2(sd)}`,
+  );
+}
+
+type RunSummary = {
+  runId: string;
+  task: string;
+  authorModel: string;
+  judgeModel: string;
+  timings: { authorMs: number; renderMs: number; judgeMs: number };
+  renderErrors: number;
+  judgeReport: JudgeReport | { raw: string; parseError: string };
+};
+
+/** One author→render→judge cycle. Writes its own run dir; returns the
+ *  summary so a variance loop can aggregate. `sample` (1-based) tags the
+ *  run dir when part of a multi-sample run. */
+async function runOnce(
+  taskPath: string,
+  taskName: string,
+  dryRun: boolean,
+  sample?: number,
+): Promise<RunSummary> {
+  const suffix = sample ? `__s${String(sample).padStart(2, "0")}` : "";
+  const runId = `${timestamp()}__${taskName}${suffix}`;
   const runDir = path.join(__dirname, "runs", runId);
   await fs.mkdir(runDir, { recursive: true });
 
@@ -403,6 +481,7 @@ async function main() {
   if ("reasoning" in report) {
     console.log(`[harness] reasoning: ${report.reasoning.slice(0, 200)}…`);
   }
+  return summary;
 }
 
 main().catch((e) => {
