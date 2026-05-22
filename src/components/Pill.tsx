@@ -6,16 +6,22 @@ import {
   useNaturalTextWidth,
 } from "../layout/textWidth";
 import { getFontMetrics } from "../layout/measureText";
-import { useCoordinateScale } from "../layout/coordinateScale";
 import { tokens, type TextStyle } from "../tokens";
+import type { ShapeGenerator } from "./Frame";
 
 /**
- * Layer 3 — `Pill`: a text label shrink-wrapped in a pill shape.
+ * Layer 3 — `Pill`: a text label shrink-wrapped in a shape.
  *
  * Folds the measure-a-label-then-size-a-shape ritual that buttons and tabs
- * kept re-implementing: it measures the label (in layout units, via
- * `useNaturalTextWidth` — no `scale` in sight), sizes the pill to it, and
- * centers the label inside.
+ * kept re-implementing: it measures the label, sizes the shape to it, and
+ * centers the label inside. Width is always derived from the label; height is
+ * derived too unless you pin it. The shape defaults to a pill (fully rounded)
+ * but any `ShapeGenerator` works — so "arbitrary-shape pills" are just a prop.
+ *
+ * The whole pill is rendered in LAYOUT units (`Text sizing="layout"`), so it
+ * scales with the viewBox as one unit and there is no px↔layout boundary
+ * inside it — which is what keeps the label centred at any scale, with no
+ * `scale` arithmetic in this component at all.
  *
  * Presentational only — pass `role`/`onClick`/`fill` through for interaction
  * and per-state styling.
@@ -24,12 +30,19 @@ export type PillProps = Omit<SVGProps<SVGGElement>, "children"> & {
   /** The label text. */
   children: string;
   /** Type token for the label. Its `lineHeight` is not used — the pill
-   *  centers the single line within `height` itself. */
+   *  centers the single line within the (derived or given) height itself. */
   textStyle: TextStyle;
-  /** Pill height, in layout units. */
-  height: number;
+  /** Pill height, in layout units. Omit to derive it from the label's cap
+   *  height + `paddingY` (the pill hugs the text). */
+  height?: number;
   /** Horizontal padding around the label, in layout units. */
   paddingX?: number;
+  /** Vertical padding above/below the label's cap height, in layout units.
+   *  Only used when `height` is omitted. */
+  paddingY?: number;
+  /** Shape generator for the outline. Defaults to `tokens.shapes.pill`; pass
+   *  e.g. `tokens.shapes.leaf` for a non-rectilinear chip. */
+  shape?: ShapeGenerator;
   /** Pill fill. */
   fill?: string;
   /** Label color. */
@@ -44,65 +57,65 @@ export function Pill({
   textStyle,
   height,
   paddingX = 16,
+  paddingY = 9,
+  shape = tokens.shapes.pill,
   fill = tokens.color.accent,
   textFill = tokens.color.accentInk,
   origin = "top-left",
   ...gProps
 }: PillProps) {
+  // All in LAYOUT units. `sizing: "layout"` means the natural width is the
+  // measured advance read directly as layout units (the font scales with the
+  // viewBox), matching the `Text sizing="layout"` below — so the pill and its
+  // label share one unit and stay in lockstep at any scale.
   const labelWidth = useNaturalTextWidth(
     children,
     textStyle.font,
     textStyle.letterSpacing,
+    "layout",
   );
   const width = labelWidth + paddingX * 2;
-  const ox = origin === "center" ? -width / 2 : 0;
-  const oy = origin === "center" ? -height / 2 : 0;
 
   // Vertical centering by CAP HEIGHT, not font box.
   //
-  // `Text` defaults to CSS-line-box centering — `halfLeading + ascentPx` —
-  // which is correct for a paragraph but leaves a single-line label *visibly
-  // off-centre* inside its shape: Inter's font bounding box reserves ~13px
-  // above the baseline (room for diacritics) and ~3px below, so centring
-  // the asymmetric box drops the ink ~0.3-1.5px low.
+  // CSS-line-box centering (`halfLeading + ascent`) is right for a paragraph
+  // but leaves a single-line label visibly low: a Latin font's box reserves
+  // far more above the baseline (room for diacritics) than below. The button
+  // convention is to centre the CAP HEIGHT — descenders then dip below the
+  // visual centre, exactly how a CSS button renders. The reference is a fixed
+  // capital ("H"), not the actual label, so every pill in a row shares one
+  // baseline regardless of its own ascenders/descenders.
   //
-  // The standard button-typography convention is to centre the CAP HEIGHT
-  // rather than the whole ink box — descenders then dip *below* the visual
-  // centre, exactly how a CSS button renders text. The reference is a fixed
-  // capital-only string (`"H"`), NOT the pill's actual label, so every pill
-  // in a row shares one baseline: "Save" and "Library" align at the cap-top
-  // and baseline, and Library's "y" descender simply extends below.
+  // In layout mode the canvas px metrics ARE the layout-unit metrics (the font
+  // number is the same; only the unit label changes), so they're used raw —
+  // no `scale` conversion, which is what retired the old px↔layout bridge.
   const fontBox = getFontMetrics(textStyle.font);
   const cap = useActualTextMetrics("H", textStyle.font);
-  const baselineOffsetPx =
+  const baselineOffset =
     (cap.actAscPx - cap.actDescPx - fontBox.ascentPx + fontBox.descentPx) / 2;
 
-  // Bridge the two coordinate spaces. `height` (the pill) is in LAYOUT units;
-  // `Text.lineHeight` and the metrics above are in CSS PX. They coincide only
-  // at scale 1 — at any other viewBox scale, passing the layout-unit height
-  // straight in as a px line-height makes the line box `height/scale` tall, so
-  // the label rides high/low. Convert: the line box must be `height * scale`
-  // px to fill the pill, and the px baseline correction becomes a layout-unit
-  // `y` once divided back by scale.
-  const { scale } = useCoordinateScale();
-  const s = scale || 1;
+  // Auto-height: cap height + symmetric vertical padding. Pinned height wins.
+  const resolvedHeight = height ?? cap.actAscPx - cap.actDescPx + paddingY * 2;
+
+  const ox = origin === "center" ? -width / 2 : 0;
+  const oy = origin === "center" ? -resolvedHeight / 2 : 0;
 
   return (
     <g {...gProps}>
       <g transform={ox || oy ? `translate(${ox} ${oy})` : undefined}>
-        <Path d={tokens.shapes.pill(width, height)} fill={fill} />
-        {/* The label is left-aligned at paddingX (which centres it
-            horizontally since width = label + 2·paddingX). `lineHeight`
-            fills the pill in px; the `y` offset converts font-box centring
-            into cap-height centring — see the comment above. */}
+        <Path d={shape(width, resolvedHeight)} fill={fill} />
+        {/* Left-aligned at paddingX (which centres it horizontally since
+            width = label + 2·paddingX). `lineHeight` fills the shape; the `y`
+            offset converts font-box centring into cap-height centring. */}
         <Text
           font={textStyle.font}
-          lineHeight={height * s}
+          lineHeight={resolvedHeight}
           letterSpacing={textStyle.letterSpacing}
           maxWidth={width}
           x={paddingX}
-          y={baselineOffsetPx / s}
+          y={baselineOffset}
           fill={textFill}
+          sizing="layout"
         >
           {children}
         </Text>

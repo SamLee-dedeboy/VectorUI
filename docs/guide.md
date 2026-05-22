@@ -145,10 +145,21 @@ constant size as the viewBox scales.
 | `x`, `y` | `number` | `0` | Top-left of the text block, layout units. |
 | `fill` | `string` | `"currentColor"` | |
 | `letterSpacing` | `number` | — | In px. |
+| `sizing` | `"screen" \| "layout"` | `"screen"` | `"layout"` reads `font`/`lineHeight` as layout units so the text scales with the viewBox (for labels inside a graphic). See below. |
 | `flowAround` | `FlowAround` | — | Wrap text around a floated shape (see [Recipes](#12-recipes)). |
 | `onMeasure` | `(size: { width, height }) => void` | — | Reports the wrapped block size in layout units. |
 
 Spread a `type` token straight in: `<Text {...tokens.type.body} maxWidth="100%">`.
+
+**`sizing` — constant pixels vs scales-with-the-viewBox.** By default text is
+`"screen"`: a constant CSS-pixel size no matter the viewBox scale, so body copy
+stays readable on a scaling surface (SPEC §5). Set `sizing="layout"` for text
+that is *part of a graphic* — a label inside a `Pill`, a chip on a curve — so it
+scales with the shapes around it and the graphic moves as one unit. In layout
+mode the `font`/`lineHeight`/`letterSpacing` numbers are read as **layout
+units**, and there is no px↔layout boundary inside the shape (this is what lets
+`Pill` centre its label at any scale with zero `scale` arithmetic). `Pill` opts
+into this for you; reach for it directly only when hand-placing graphic text.
 
 `FlowAround` = `{ intrusionAt, rightIntrusionAt?, gap? }` — each `intrusionAt`
 reports, in layout units, how far the shape reaches into a line band from one
@@ -306,9 +317,10 @@ A straight `line()` curve makes it an ordinary flex row.
 
 | Prop | Type | Default | Notes |
 |------|------|---------|-------|
-| `curve` | `Curve` | — | From `arc()`, `line()`, or `quadratic()`. |
-| `distribute` | `"even" \| "start" \| "end" \| "spread"` | `"even"` | Spacing strategy. |
+| `curve` | `Curve \| CurveFactory` | — | A fixed curve, or a `fitLine`/`fitArc` factory that sizes to content. |
+| `distribute` | `"even" \| "start" \| "end" \| "spread"` | `"start"` for a factory, else `"even"` | Spacing strategy. |
 | `gap` | `number` | `0` | For `"start"`/`"end"`. |
+| `padding` | `number` | `0` | Inset before first / after last item — content-sized curves only. |
 | `orient` | `"along" \| "upright"` | `"along"` | Rotate to the tangent, or not. |
 | `align` | `number` | `0` | Perpendicular offset from the curve. |
 
@@ -324,24 +336,61 @@ const fan = arc({ cx: 200, cy: 300, radius: 160, startAngle: -2.6, endAngle: -0.
 Children are placed at their **origin** on the curve point — give them
 origin-centered geometry (e.g. `Pill origin="center"`).
 
+#### Content-sized curves — don't hand-size the curve to the items
+
+A fixed `Curve` has a fixed length; if the items don't fit, they overlap
+(PathFlow warns in dev when they do). Instead of hand-tuning the radius/length
+until a row of pills happens to fit, pass a **curve factory** — `fitLine` or
+`fitArc` — and PathFlow sizes the curve to the measured content (Σwidths +
+gaps + `padding`), the curve analogue of `Frame width="auto"`. A valid spec
+then *can't* overlap.
+
+```tsx
+import { PathFlow, fitArc, Pill, tokens } from "vectorui";
+
+// Give the arc its centre + start + a free degree of freedom. Here radius is
+// fixed and the SWEEP grows to fit the pills (give `sweep` instead to fix the
+// angular span and grow the RADIUS). distribute defaults to "start" (packs
+// flush); orient="upright" is the safe default for an arc.
+const arcFit = fitArc({ cx: 240, cy: 320, startAngle: -2.0, radius: 260 });
+<PathFlow curve={arcFit} gap={12} padding={8} orient="upright">
+  {labels.map((l) => (
+    <Pill key={l} textStyle={tokens.type.label} origin="center">{l}</Pill>
+  ))}
+</PathFlow>
+```
+
+Pair with auto-sized `Pill`s (no hand-coded width/height) and the whole menu is
+declared by *content* — no pixel geometry to keep in sync.
+
 ---
 
 ## 9. `Pill` and the Layer-1 primitives
 
 ### `Pill`
 
-A text label shrink-wrapped in a pill shape. Measures the label itself (in
-layout units — no `scale` math) and centers it.
+A text label shrink-wrapped in a shape. Measures the label itself and sizes the
+shape to it — width always, height too unless you pin it. Renders in **layout
+units** (`Text sizing="layout"`), so the whole pill scales with the viewBox as
+one unit and the label stays centred at any scale (no `scale` math anywhere).
 
 | Prop | Type | Default | Notes |
 |------|------|---------|-------|
 | `children` | `string` | — | The label. |
 | `textStyle` | `TextStyle` | — | A `tokens.type.*` style. |
-| `height` | `number` | — | Pill height, layout units. |
+| `height` | `number` | *derived* | Layout units. Omit to size to the label's cap height + `paddingY`. |
 | `paddingX` | `number` | `16` | Horizontal padding. |
+| `paddingY` | `number` | `9` | Vertical padding — used only when `height` is omitted. |
+| `shape` | `ShapeGenerator` | `tokens.shapes.pill` | Any shape — `tokens.shapes.leaf`, a custom `(w,h)=>d`, etc. |
 | `fill`, `textFill` | `string` | accent / accentInk | |
 | `origin` | `"top-left" \| "center"` | `"top-left"` | `"center"` for placement on a curve/point. |
 | …`SVGProps` | | | `role`, `onClick`, etc. — `Pill` is presentational; wire interaction through these. |
+
+```tsx
+// Fully content-driven: no width, no height, any shape.
+<Pill textStyle={tokens.type.label}>Tag</Pill>
+<Pill textStyle={tokens.type.label} shape={tokens.shapes.leaf}>Leaf chip</Pill>
+```
 
 ### Layer 1 — `Group`, `Path`, `Circle`, `TextLine`
 

@@ -20,11 +20,20 @@ import { prepareCached } from "./measureText";
  * right-leaning text inside a pill that should be symmetric.
  *
  * Returns the unwrapped width of `text` rendered in `font`, in layout units.
+ *
+ * `sizing` matches `Text`'s mode. In `"screen"` (default) the font is constant
+ * px, so the px width is divided by `scale` to land in layout units. In
+ * `"layout"` the font's number is itself read as layout units (the text scales
+ * with the viewBox), so the measured width — taken at the font's natural px
+ * size — IS the layout-unit width and is returned as-is. Pass the same
+ * `sizing` you give the `Text`/`Pill` that consumes the width, or a pill sized
+ * from this width won't match its rendered label at scale ≠ 1.
  */
 export function useNaturalTextWidth(
   text: string,
   font: string,
   letterSpacingPx?: number,
+  sizing: "screen" | "layout" = "screen",
 ): number {
   const { scale } = useCoordinateScale();
   // Subscribe so the width recomputes once the bundled font is available.
@@ -32,6 +41,7 @@ export function useNaturalTextWidth(
   const opts =
     letterSpacingPx != null ? { letterSpacing: letterSpacingPx } : undefined;
   const widthPx = measureNaturalWidth(prepareCached(text, font, opts));
+  if (sizing === "layout") return widthPx;
   return scale > 0 ? widthPx / scale : widthPx;
 }
 

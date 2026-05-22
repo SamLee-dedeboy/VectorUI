@@ -92,6 +92,8 @@ export {
   distributeAlong,
   pointAt,
   nearestPointOnCurve,
+  fitLine,
+  fitArc,
 } from "./layout/walkPath";
 export type {
   Curve,
@@ -105,6 +107,9 @@ export type {
   DistributeOptions,
   NearestPoint,
   NearestPointOptions,
+  CurveFactory,
+  FitLineSpec,
+  FitArcSpec,
 } from "./layout/walkPath";
 export {
   uniformResample,

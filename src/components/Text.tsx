@@ -61,6 +61,18 @@ export type TextProps = Omit<
   y?: number;
   fill?: string;
   letterSpacing?: number;
+  /**
+   * Coordinate space the text is sized in:
+   *  - `"screen"` (default) — `font`/`lineHeight` are CSS px and the text
+   *    renders at a constant pixel size regardless of the viewBox scale
+   *    (SPEC §5: body copy must not shrink when the surface scales).
+   *  - `"layout"` — `font`/`lineHeight`/`letterSpacing` are read as LAYOUT
+   *    units, so the text scales with the viewBox like the shapes around it.
+   *    Use for labels that are part of a graphic (a `Pill`, a label placed on
+   *    a curve) so the whole graphic scales as one unit and there is no
+   *    px↔layout boundary inside the shape.
+   */
+  sizing?: "screen" | "layout";
   /** Wrap text around a floated shape instead of a plain rectangle. */
   flowAround?: FlowAround;
   /**
@@ -105,6 +117,7 @@ export function Text({
   y = 0,
   fill = "currentColor",
   letterSpacing,
+  sizing = "screen",
   flowAround,
   overflowWrap,
   onMeasure,
@@ -115,11 +128,21 @@ export function Text({
   const fontsReady = useFontsReady();
   const parsed = useMemo(() => parseFont(font), [font]);
 
-  // maxWidth is in layout units; pretext works in px. "100%" resolves to the
-  // enclosing slot's width, or the viewBox edge when not inside a slot.
+  // The factor that takes a layout-unit length into the space pretext measures
+  // in. Screen mode measures in CSS px (so layout × scale); layout mode treats
+  // the font's number as layout units directly and measures in that same space
+  // (factor 1) — line-breaking is scale-invariant, so we measure at the font's
+  // natural px size and simply relabel the results as layout units. The render
+  // group then drops the inverse-scale wrapper so the text scales with the
+  // viewBox. Net: one consistent unit inside the text, no px↔layout boundary.
+  const isLayout = sizing === "layout";
+  const mScale = isLayout ? 1 : scale;
+
+  // maxWidth is in layout units. "100%" resolves to the enclosing slot's
+  // width, or the viewBox edge when not inside a slot.
   const maxWidthLayout =
     maxWidth === "100%" ? (slot?.width ?? viewBoxWidth - x) : maxWidth;
-  const maxWidthPx = maxWidthLayout * scale;
+  const maxWidthPx = maxWidthLayout * mScale;
 
   const paragraph = useMemo(
     () => {
@@ -132,16 +155,17 @@ export function Text({
           lineHeightPx: lineHeight,
           letterSpacingPx: letterSpacing,
           overflowWrap,
-          gapPx: gap * scale,
-          // Convert the float's layout-unit profile(s) into pixel space.
+          gapPx: gap * mScale,
+          // Convert the float's layout-unit profile(s) into the measurement
+          // space (px in screen mode, layout units in layout mode).
           intrusionAtPx: (yTopPx, yBottomPx) =>
-            flowAround.intrusionAt(yTopPx / scale, yBottomPx / scale) * scale,
+            flowAround.intrusionAt(yTopPx / mScale, yBottomPx / mScale) * mScale,
           rightIntrusionAtPx: flowAround.rightIntrusionAt
             ? (yTopPx, yBottomPx) =>
                 flowAround.rightIntrusionAt!(
-                  yTopPx / scale,
-                  yBottomPx / scale,
-                ) * scale
+                  yTopPx / mScale,
+                  yBottomPx / mScale,
+                ) * mScale
             : undefined,
         });
       }
@@ -155,22 +179,31 @@ export function Text({
       });
     },
     // fontsReady is a measurement dependency: caches flush when it flips.
-    [children, font, maxWidthPx, lineHeight, letterSpacing, fontsReady, flowAround, overflowWrap, scale],
+    [children, font, maxWidthPx, lineHeight, letterSpacing, fontsReady, flowAround, overflowWrap, mScale],
   );
 
-  // Report block size back to a parent (e.g. a height="auto" Frame later).
+  // Report block size back to a parent (e.g. a height="auto" Frame). The
+  // measured height is divided back by the same factor it was measured in.
   useEffect(() => {
     onMeasure?.({
       width: maxWidthLayout,
-      height: scale === 0 ? 0 : paragraph.heightPx / scale,
+      height: mScale === 0 ? 0 : paragraph.heightPx / mScale,
     });
-  }, [onMeasure, maxWidthLayout, paragraph.heightPx, scale]);
+  }, [onMeasure, maxWidthLayout, paragraph.heightPx, mScale]);
 
+  // Screen mode neutralises the viewBox scale (constant px). Layout mode does
+  // not — the text scales with the viewBox. In layout mode the measured values
+  // ARE the layout-unit values (we measured in the layout-unit space), so the
+  // per-line coords/size pass through to TextLine unchanged in both modes.
   const invScale = scale === 0 ? 1 : 1 / scale;
 
   return (
     <g
-      transform={`translate(${x} ${y}) scale(${invScale})`}
+      transform={
+        isLayout
+          ? `translate(${x} ${y})`
+          : `translate(${x} ${y}) scale(${invScale})`
+      }
       fill={fill}
       {...groupProps}
     >

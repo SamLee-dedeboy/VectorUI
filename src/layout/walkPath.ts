@@ -378,6 +378,10 @@ export type DistributeOptions = {
   gap?: number;
   /** Natural widths of items — used by "start"/"end"/"spread". */
   itemWidths?: number[];
+  /** Inset before the first item, layout units — used by "start". Lets a
+   *  content-fitted curve (length = content + 2·padding) leave symmetric
+   *  breathing room at both ends without a bespoke distribute mode. */
+  padStart?: number;
 };
 
 /**
@@ -420,7 +424,8 @@ export function distributeAlong(
 
   // "start" / "end": pack with a fixed gap.
   const block = totalWidth + gap * (count - 1);
-  const base = opts.distribute === "end" ? curveLength - block : 0;
+  const base =
+    opts.distribute === "end" ? curveLength - block : (opts.padStart ?? 0);
   const offsets: number[] = [];
   let acc = base;
   for (let i = 0; i < count; i++) {
@@ -428,4 +433,75 @@ export function distributeAlong(
     acc += widths[i] + gap;
   }
   return offsets;
+}
+
+// --- content-sized curves -------------------------------------------------
+
+/**
+ * A curve that doesn't know its own length yet — it's realized once its
+ * content does. `PathFlow` measures its children, sums their widths + gaps +
+ * padding into a required length, and calls the factory to get a `Curve` of
+ * (at least) that length. This is the curve analogue of `Frame width="auto"`
+ * / `ShapeGenerator`: content drives geometry, so a valid spec can't overflow
+ * the curve. The factory fixes the curve's *shape family* (a line, an arc at
+ * a given centre/start) and which degree of freedom absorbs the length.
+ */
+export type CurveFactory = (length: number) => Curve;
+
+export type FitLineSpec = {
+  /** Start point of the line, layout units. */
+  x1: number;
+  y1: number;
+  /** Direction, in radians (0 = +x). The line runs `length` units this way. */
+  angle: number;
+};
+
+/** A straight line that grows to the required length from `(x1, y1)` along
+ *  `angle`. The degenerate flex-row: items pack with no overlap, exactly. */
+export function fitLine({ x1, y1, angle }: FitLineSpec): CurveFactory {
+  const dx = Math.cos(angle);
+  const dy = Math.sin(angle);
+  return (length) =>
+    line({ x1, y1, x2: x1 + dx * length, y2: y1 + dy * length });
+}
+
+/**
+ * An arc that grows to the required length, with ONE free degree of freedom:
+ *  - give `radius` (+ optional `direction`, ±1) → the **sweep** is solved
+ *    (`sweep = direction · length / radius`): the fan keeps its radius and
+ *    wraps further around as content grows.
+ *  - give `sweep` (signed radians) → the **radius** is solved
+ *    (`radius = length / |sweep|`): the fan keeps its angular span and grows
+ *    outward as content grows.
+ *
+ * Exactly one of `radius`/`sweep` is provided (a discriminated union), so the
+ * free parameter is never ambiguous. Note: on a tight radius, rotated chips'
+ * corners can still graze even when their centres are spaced — non-overlap is
+ * exact for `fitLine`, approximate for `fitArc` (prefer `orient="upright"`).
+ */
+export type FitArcSpec = {
+  cx: number;
+  cy: number;
+  /** Start angle in radians (0 = +x, increasing clockwise in SVG). */
+  startAngle: number;
+} & (
+  | { radius: number; direction?: 1 | -1; sweep?: never }
+  | { sweep: number; radius?: never; direction?: never }
+);
+
+export function fitArc(spec: FitArcSpec): CurveFactory {
+  const { cx, cy, startAngle } = spec;
+  return (length) => {
+    let radius: number;
+    let sweep: number;
+    if ("radius" in spec && spec.radius !== undefined) {
+      radius = spec.radius;
+      const dir = spec.direction ?? 1;
+      sweep = radius === 0 ? 0 : (dir * length) / radius;
+    } else {
+      sweep = spec.sweep;
+      radius = sweep === 0 ? 0 : length / Math.abs(sweep);
+    }
+    return arc({ cx, cy, radius, startAngle, endAngle: startAngle + sweep });
+  };
 }
