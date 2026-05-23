@@ -7,6 +7,7 @@
   "scripts": {
     "eval": "TSX_TSCONFIG_PATH=../tsconfig.json tsx harness.ts",
     "smoke": "TSX_TSCONFIG_PATH=../tsconfig.json tsx render/smokeTest.ts",
+    "baseline:snapshot": "TSX_TSCONFIG_PATH=../tsconfig.json tsx render/snapshotBaseline.ts",
     "viewer": "TSX_TSCONFIG_PATH=../tsconfig.json tsx viewer/server.ts"
   },
   "dependencies": {

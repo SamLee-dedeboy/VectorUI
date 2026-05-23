@@ -146,6 +146,32 @@ synced.)
 
 ---
 
+## The render baseline (regression spec)
+
+Alongside the live `Sketch.tsx` sits a **frozen** sibling,
+[`baseline.tsx`](../src/playground/baseline.tsx) — a fixed component whose
+rendered output is a specification: it must stay identical across library
+refactors. It exercises the "text wraps to fit by default" behaviour (a root
+with no `width`/`height`, a padded `Flow`, `Text` with no `maxWidth`). Two
+goldens pin it, both measured at a reproducible **480px** width:
+
+| Golden | Fidelity | Checked by |
+|--------|----------|-----------|
+| `baseline.golden.svg` / `baseline.golden.png` | Real browser, true Inter metrics — what you actually see. | Eye / diff after a change. Regenerate with `npm run baseline:snapshot`. |
+| `tests/__snapshots__/baseline.test.ts.snap` | Deterministic jsdom render (synthetic ≈0.55em metrics). | `npm test` automatically. |
+
+The two use different font metrics, so their line breaks differ — that's
+expected. The SVG/PNG is the human-facing truth; the `.snap` is the automated
+CI guard that fails on any structural/sizing regression (viewBox, wrap width,
+line count, padding handling).
+
+**Changing the baseline on purpose:** edit `baseline.tsx`, then update both
+goldens together — `npm run baseline:snapshot` (real browser) and `npm test -- -u`
+(the jsdom snapshot). Don't use `baseline.tsx` as a scratchpad — that's what
+`Sketch.tsx` is for.
+
+---
+
 ## Limits
 
 - **Dev-only.** No dev server → no save endpoint. The page still renders the
