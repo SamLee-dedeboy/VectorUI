@@ -2,11 +2,13 @@ import {
   Children,
   isValidElement,
   useEffect,
+  useMemo,
   type ReactNode,
   type SVGProps,
 } from "react";
 import { useChildBounds } from "../layout/childBounds";
-import { useSlot } from "../layout/slot";
+import { useCoordinateScale } from "../layout/coordinateScale";
+import { SlotContext, useSlot } from "../layout/slot";
 import {
   computeFlowLayout,
   type FlowDirection,
@@ -75,6 +77,7 @@ export function Flow({
   const items = Children.toArray(children).filter(isValidElement);
   const { bounds, Measured } = useChildBounds();
   const slot = useSlot();
+  const { viewBoxWidth } = useCoordinateScale();
 
   // `"100%"` fills the enclosing slot's width, the way `Text maxWidth="100%"`
   // does — which lets a row inside a `Frame width="auto"` slot distribute
@@ -89,6 +92,21 @@ export function Flow({
     mainSize === "100%" ? (isRow ? slotWidth : undefined) : mainSize;
   const resolvedCrossSize =
     crossSize === "100%" ? (isRow ? undefined : slotWidth) : crossSize;
+
+  // The width a full-width child (a `Text`, a nested column `Flow`) can fill.
+  // A column stacks its children full-width, so it republishes the slot to
+  // them — its own cross extent when pinned, otherwise the ambient width
+  // (enclosing slot, or the viewBox edge), minus this Flow's horizontal
+  // padding. That is what lets `<Text>` with no `maxWidth` wrap inside the
+  // padding rather than over it. A row shares its width across children, so it
+  // leaves the ambient slot untouched (a single child can't claim it all).
+  const padH = Array.isArray(padding) ? padding[1] : padding;
+  const ambientWidth = slotWidth ?? viewBoxWidth - x;
+  const childWidth =
+    resolvedCrossSize !== undefined
+      ? resolvedCrossSize
+      : Math.max(0, ambientWidth - padH * 2);
+  const childSlot = useMemo(() => ({ width: childWidth }), [childWidth]);
 
   const layout = computeFlowLayout(bounds, items.length, {
     direction,
@@ -117,14 +135,25 @@ export function Flow({
         pointerEvents="none"
         aria-hidden="true"
       />
-      {items.map((child, i) => (
-        <g
-          key={i}
-          transform={`translate(${layout.placements[i].tx} ${layout.placements[i].ty})`}
-        >
-          <Measured index={i}>{child}</Measured>
-        </g>
-      ))}
+      {items.map((child, i) => {
+        const placed = (
+          <g
+            key={i}
+            transform={`translate(${layout.placements[i].tx} ${layout.placements[i].ty})`}
+          >
+            <Measured index={i}>{child}</Measured>
+          </g>
+        );
+        // Column children fill the Flow's content width; a row shares it, so it
+        // passes the ambient slot through unchanged.
+        return isRow ? (
+          placed
+        ) : (
+          <SlotContext.Provider key={i} value={childSlot}>
+            {placed}
+          </SlotContext.Provider>
+        );
+      })}
     </g>
   );
 }

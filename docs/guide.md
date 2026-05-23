@@ -59,6 +59,9 @@ The rules of thumb:
 
 With `width="auto"`, `scale` is pinned to 1 — layout units equal pixels — and a
 layout adapts by reading [`useViewportWidth()`](#11-hooks--layout-utilities).
+`width` defaults to `"auto"` and `height` to `"content"`, so the minimal
+`<VectorUIRoot>` reflows and sizes to its content; reach for `width={<number>}`
+only when you want uniform scaling.
 
 ---
 
@@ -117,8 +120,8 @@ the filter `<defs>`.
 
 | Prop | Type | Default | Notes |
 |------|------|---------|-------|
-| `width` | `number \| "auto"` | — | viewBox width in layout units, or `"auto"` to track pixel width (pins `scale` to 1). |
-| `height` | `number \| "content"` | — | viewBox height in layout units, or `"content"` to fit the rendered content. |
+| `width` | `number \| "auto"` | `"auto"` | viewBox width in layout units, or `"auto"` to track pixel width (pins `scale` to 1). Defaults to `"auto"`, so an unsized root reflows and wraps at its real boundary; pass a number for uniform scaling. |
+| `height` | `number \| "content"` | `"content"` | viewBox height in layout units, or `"content"` to fit the rendered content (the default). |
 | `style` | `CSSProperties` | — | Applied to the `<svg>`. Use for `maxWidth`, `minWidth`, `background`. |
 | …`SVGProps` | | | `role`, `aria-*`, etc. forwarded to the `<svg>`. |
 
@@ -141,7 +144,7 @@ constant size as the viewBox scales.
 | `children` | `string` | — | Plain text only (no inline markup — see [Limitations](#13-limitations--rough-edges)). |
 | `font` | `string` | — | CSS font shorthand in **px**, e.g. `"600 16px Inter"`. |
 | `lineHeight` | `number` | — | Line-box height in **CSS px**. |
-| `maxWidth` | `number \| "100%"` | — | Wrap width in layout units; `"100%"` resolves to the enclosing slot's width. |
+| `maxWidth` | `number \| "100%"` | `"100%"` | Wrap width in layout units. Defaults to `"100%"` — like a block element, text fills its container and wraps. `"100%"` resolves to the enclosing `Flow`'s content box (inside its padding) or `Frame` slot, falling back to the viewBox edge. Pass a number to wrap at a fixed width. |
 | `x`, `y` | `number` | `0` | Top-left of the text block, layout units. |
 | `fill` | `string` | `"currentColor"` | |
 | `letterSpacing` | `number` | — | In px. |
@@ -274,10 +277,18 @@ with its sibling. `padding` and `align` are first-class.
 | `x`, `y` | `number` | `0` | Top-left, layout units. |
 | `onMeasure` | `(size) => void` | — | Reports the flow's resolved size. |
 
+A **column** `Flow` publishes its content width (its cross extent minus its
+horizontal `padding`) to each child, the way a `Frame` slot does. So a `Text`
+with no `maxWidth` fills that content box and wraps **inside** the padding — no
+`maxWidth="100%"` needed, and no overrun of the padded edge. This chains through
+nested column Flows and Frame slots. (A **row** shares its width across children,
+so it passes the ambient width through unchanged — a single row child can't claim
+it all; size row children explicitly or with `mainSize`.)
+
 ```tsx
 <Flow direction="column" gap={tokens.space.md} padding={24}>
-  <Text {...tokens.type.title} maxWidth="100%">Title</Text>
-  <Text {...tokens.type.body}  maxWidth="100%">Body…</Text>
+  <Text {...tokens.type.title}>Title</Text>  {/* fills the content box, wraps */}
+  <Text {...tokens.type.body}>Body…</Text>
   <Button>Action</Button>
 </Flow>
 

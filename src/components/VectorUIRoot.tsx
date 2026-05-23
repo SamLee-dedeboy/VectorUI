@@ -46,17 +46,22 @@ export type VectorUIRootProps = Omit<
   SVGProps<SVGSVGElement>,
   "viewBox" | "width" | "height"
 > & {
-  /** viewBox width in layout units, or "auto" to track the real pixel width. */
-  width: number | "auto";
-  /** viewBox height in layout units, or "content" to fit the rendered content. */
-  height: number | "content";
+  /** viewBox width in layout units, or "auto" to track the real pixel width.
+   *  Defaults to `"auto"` — the scene reflows (and text wraps) at its real
+   *  container boundary instead of scaling uniformly. Pass a number to opt into
+   *  uniform scaling (a poster, a fixed diagram). */
+  width?: number | "auto";
+  /** viewBox height in layout units, or "content" to fit the rendered content.
+   *  Defaults to `"content"` — the height tracks the rendered content, so a
+   *  scene needs no guessed fallback height. Pass a number for a fixed height. */
+  height?: number | "content";
   children?: ReactNode;
   style?: CSSProperties;
 };
 
 export function VectorUIRoot({
-  width,
-  height,
+  width = "auto",
+  height = "content",
   children,
   style,
   ...svgProps

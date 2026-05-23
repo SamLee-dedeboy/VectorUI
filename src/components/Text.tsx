@@ -54,8 +54,11 @@ export type TextProps = Omit<
   font: string;
   /** Line box height, in CSS px. */
   lineHeight: number;
-  /** Wrap width in layout units, or "100%" to fill to the viewBox edge. */
-  maxWidth: number | "100%";
+  /** Wrap width in layout units, or "100%" to fill the available width.
+   *  Defaults to `"100%"` — like a block element, text fills its container and
+   *  wraps. "Available width" is the enclosing `Flow`'s content box (inside its
+   *  padding) or `Frame` slot, falling back to the viewBox edge. */
+  maxWidth?: number | "100%";
   /** Top-left of the text block, in layout units. Defaults to 0,0. */
   x?: number;
   y?: number;
@@ -112,7 +115,7 @@ export function Text({
   children,
   font,
   lineHeight,
-  maxWidth,
+  maxWidth = "100%",
   x = 0,
   y = 0,
   fill = "currentColor",
