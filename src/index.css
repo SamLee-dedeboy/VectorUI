@@ -280,15 +280,104 @@ h2 {
   padding-right: 16px;
 }
 
-/* Playground (#/playground) — editor left, live render right.
-   Breaks out of the centered column like .demo-split.is-split for room. */
+/* Playground (#/playground). The .pg wrapper breaks out of the centered
+   column like .demo-split.is-split so the tabs + split get room. */
+.pg {
+  margin-inline: calc(50% - 50vw);
+  padding-inline: max(24px, calc(50vw - 720px));
+}
+
+/* Instance tabs */
+.pg-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.pg-tab {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #fff;
+  overflow: hidden;
+}
+.pg-tab.active {
+  border-color: var(--accent);
+}
+.pg-tab-label {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  padding: 5px 6px 5px 11px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12.5px;
+  color: var(--muted);
+  cursor: pointer;
+}
+.pg-tab.active .pg-tab-label {
+  color: var(--ink);
+  font-weight: 600;
+}
+.pg-tab-x {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  padding: 4px 8px;
+  font-size: 14px;
+  line-height: 1;
+  color: #b0b0aa;
+  cursor: pointer;
+}
+.pg-tab-x:hover {
+  color: #b81d35;
+}
+.pg-tab-new {
+  appearance: none;
+  background: transparent;
+  border: 1px dashed var(--line);
+  border-radius: 7px;
+  padding: 5px 11px;
+  font-size: 12.5px;
+  color: var(--muted);
+  cursor: pointer;
+}
+.pg-tab-new:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.pg-tab-input {
+  border: 1px solid var(--accent);
+  border-radius: 7px;
+  padding: 5px 10px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12.5px;
+  width: 9em;
+}
+.pg-action-error {
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border: 1px solid #e0b4b4;
+  background: #fff5f5;
+  border-radius: 8px;
+  color: #8a1f1f;
+  font-size: 12.5px;
+}
+.pg-empty {
+  border: 1px dashed var(--line);
+  border-radius: 10px;
+  padding: 48px 24px;
+  text-align: center;
+  color: var(--muted);
+}
+
+/* editor left, live render right */
 .pg-split {
   display: flex;
   gap: 20px;
   align-items: stretch;
-  margin-inline: calc(50% - 50vw);
-  padding-inline: max(24px, calc(50vw - 720px));
-  height: 78vh;
+  height: 74vh;
 }
 .pg-pane {
   flex: 1 1 0;

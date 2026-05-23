@@ -185,9 +185,9 @@ export const DEMOS: DemoEntry[] = [
     id: "playground",
     title: "▶ Playground",
     blurb:
-      "A live scratchpad: edit a real component file on the left, see it render on the right. Ask Claude Code to edit the same file and watch it hot-reload.",
+      "A live scratchpad: tabbed instances, each a real component file. Edit on the left, see it render on the right. Ask Claude Code to edit any instance and watch it hot-reload.",
     proves:
-      "Dev-only sandbox over a real Sketch.tsx — shared editing surface for you and the agent. (No Code tab; the page is the editor.)",
+      "Dev-only sandbox over real files in src/playground/sketches/ — add/rename/delete instances; a shared editing surface for you and the agent. (No Code tab; the page is the editor.)",
     Component: PlaygroundDemo,
     // No `sources`: the page IS the editor, so there's nothing to mirror.
   },

@@ -2,49 +2,56 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import CodeMirror from "@uiw/react-codemirror";
 import { javascript } from "@codemirror/lang-javascript";
 import { oneDark } from "@codemirror/theme-one-dark";
-import sketchRaw from "./Sketch.tsx?raw";
-import { saveSketch } from "./api";
+import { saveInstance } from "./api";
 
 /**
- * The Playground's left panel: a CodeMirror editor over the real
- * `src/playground/Sketch.tsx`.
+ * The Playground's left panel: a CodeMirror editor over one real instance file
+ * (src/playground/sketches/<name>.tsx).
  *
- *  • Initial contents come from the `?raw` import (the committed file).
- *  • Typing auto-saves after a short debounce (Cmd/Ctrl+S forces it now); the
- *    save hits the dev API, which writes the file, which hot-reloads the render.
- *  • Disk changes from OUTSIDE the editor — i.e. Claude Code editing the file —
- *    arrive via Vite HMR on the `?raw` module. With no unsaved local edits we
- *    adopt them silently; mid-edit we surface a banner instead of clobbering.
- *  • Without the dev API (production build) saving fails and we show a notice;
- *    the editor still renders the committed source read-only-ish.
+ *  • Mount it with `key={name}` so switching instances reseeds it cleanly.
+ *  • Typing auto-saves after a short debounce (Cmd/Ctrl+S forces it); the save
+ *    writes the file via the dev API, which hot-reloads the render.
+ *  • `diskContent` is the file's current text (from the parent's `?raw` glob,
+ *    kept live by HMR). When it changes from OUTSIDE the editor — i.e. Claude
+ *    Code editing the file — we adopt it if there are no unsaved local edits,
+ *    else show a conflict banner instead of clobbering.
+ *  • Without the dev API (production build) saving fails and we show a notice.
  */
 
 const SAVE_DEBOUNCE_MS = 500;
 
-export function Editor() {
-  const [value, setValue] = useState(sketchRaw);
+export function Editor({
+  name,
+  diskContent,
+}: {
+  name: string;
+  diskContent: string;
+}) {
+  const [value, setValue] = useState(diskContent);
   const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">(
     "idle",
   );
   // External (on-disk) content that conflicts with unsaved local edits.
   const [conflict, setConflict] = useState<string | null>(null);
 
-  // Refs so the once-mounted HMR handler always sees current values.
   const valueRef = useRef(value);
-  const lastSyncedRef = useRef(value); // last content known to match disk
+  const lastSyncedRef = useRef(diskContent); // last content known to match disk
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   valueRef.current = value;
 
-  const save = useCallback(async (code: string) => {
-    setStatus("saving");
-    try {
-      await saveSketch(code);
-      lastSyncedRef.current = code;
-      setStatus("saved");
-    } catch {
-      setStatus("error");
-    }
-  }, []);
+  const save = useCallback(
+    async (code: string) => {
+      setStatus("saving");
+      try {
+        await saveInstance(name, code);
+        lastSyncedRef.current = code;
+        setStatus("saved");
+      } catch {
+        setStatus("error");
+      }
+    },
+    [name],
+  );
 
   const handleChange = useCallback(
     (next: string) => {
@@ -55,7 +62,6 @@ export function Editor() {
     [save],
   );
 
-  // Cmd/Ctrl+S → save immediately.
   const onKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s") {
@@ -67,23 +73,17 @@ export function Editor() {
     [save],
   );
 
-  // Pull external disk edits (e.g. from Claude Code) in via HMR on ?raw.
+  // Pull external disk edits (e.g. from Claude Code) in when `diskContent`
+  // changes — HMR refreshes the parent's ?raw glob, which flows down here.
   useEffect(() => {
-    if (!import.meta.hot) return;
-    import.meta.hot.accept("./Sketch.tsx?raw", (mod) => {
-      const incoming = (mod as { default?: string })?.default;
-      if (incoming == null) return;
-      if (incoming === lastSyncedRef.current) return; // our own save echoing back
-      if (valueRef.current === lastSyncedRef.current) {
-        // No unsaved local edits — adopt the new disk contents.
-        lastSyncedRef.current = incoming;
-        setValue(incoming);
-      } else {
-        // Local edits diverge from disk — let the user choose.
-        setConflict(incoming);
-      }
-    });
-  }, []);
+    if (diskContent === lastSyncedRef.current) return; // our own save echoing back
+    if (valueRef.current === lastSyncedRef.current) {
+      lastSyncedRef.current = diskContent; // no local edits — adopt silently
+      setValue(diskContent);
+    } else {
+      setConflict(diskContent); // diverged — let the user choose
+    }
+  }, [diskContent]);
 
   const acceptConflict = () => {
     if (conflict == null) return;
@@ -96,7 +96,7 @@ export function Editor() {
   return (
     <div className="pg-editor" onKeyDown={onKeyDown}>
       <div className="pg-editor-bar">
-        <span className="pg-file">src/playground/Sketch.tsx</span>
+        <span className="pg-file">src/playground/sketches/{name}.tsx</span>
         <span className={`pg-status pg-status-${status}`}>
           {status === "saving"
             ? "saving…"

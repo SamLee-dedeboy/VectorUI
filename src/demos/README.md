@@ -35,8 +35,8 @@ component carries no demo-specific hard-coded content. Each demo page's **Code**
 tab lists `demo.tsx` first, then the component files.
 
 The Playground is the one exception: it lives in `src/playground/` (not under
-`demos/`) because its `Sketch.tsx` is a real, persistent file that a Claude Code
-session is meant to edit by path. A small dev-only Vite plugin
-(`src/vite-playground-plugin.ts`) lets the in-browser editor write that file; the
-page ships no Code tab (it *is* the editor). See
+`demos/`) because its instances (`sketches/*.tsx`) are real, persistent files a
+Claude Code session is meant to edit by path. A dev-only Vite plugin
+(`src/vite-playground-plugin.ts`) gives the in-browser editor CRUD over those
+files; the page ships no Code tab (it *is* the editor). See
 [`docs/playground.md`](../../docs/playground.md) for the full write-up.
