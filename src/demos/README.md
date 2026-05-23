@@ -38,4 +38,5 @@ The Playground is the one exception: it lives in `src/playground/` (not under
 `demos/`) because its `Sketch.tsx` is a real, persistent file that a Claude Code
 session is meant to edit by path. A small dev-only Vite plugin
 (`src/vite-playground-plugin.ts`) lets the in-browser editor write that file; the
-page ships no Code tab (it *is* the editor).
+page ships no Code tab (it *is* the editor). See
+[`docs/playground.md`](../../docs/playground.md) for the full write-up.

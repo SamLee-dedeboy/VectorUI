@@ -717,3 +717,7 @@ npm test         # vitest — pure layout/shape functions
 Demos live at `/#/<demo-id>` and double as integration tests and worked
 examples; each demo page has a **Code** tab showing its source. See
 [`src/demos/README.md`](../src/demos/README.md).
+
+For a live scratchpad — edit a real component file in the browser (or have
+Claude Code edit it) and watch it hot-reload — open `/#/playground`. See
+[`playground.md`](./playground.md).
