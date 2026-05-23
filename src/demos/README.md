@@ -14,6 +14,7 @@ one route each via the hash router.
 | `#/06-procedural-path` | **6 · Procedural path with live reflow** | One closed-form function feeding both `ShapeGenerator` and `Text`'s `intrusionAt` — slider input morphs the silhouette and reflows the paragraph on one frame. |
 | `#/07-curve-slider` | **7 · CurveSlider** | First-principles components — a value selector whose track *is* the function (volume cusp, hike elevation, full-circle clock). |
 | `#/08-design-surface` | **8 · DesignSurface** | Direct-manipulation edit mode — `useEditHandle` protocol; drags that cascade through the layout (scoop → text rewrap → slot height → Frame auto-size). |
+| `#/playground` | **▶ Playground** | A live scratchpad (dev only): edit the real `src/playground/Sketch.tsx` on the left, see it render on the right. Both the in-browser editor and Claude Code write the same file; either edit hot-reloads. |
 
 Demo 1 is the headline: a column of body text wrapping a shape's silhouette —
 the thing that is impossible in plain HTML/CSS without absurd hacks.
@@ -32,3 +33,9 @@ Each demo folder separates the **reusable component** from the **demo page**:
 So `02-card/demo.tsx` imports `02-card/Card.tsx` and passes it arguments — the
 component carries no demo-specific hard-coded content. Each demo page's **Code**
 tab lists `demo.tsx` first, then the component files.
+
+The Playground is the one exception: it lives in `src/playground/` (not under
+`demos/`) because its `Sketch.tsx` is a real, persistent file that a Claude Code
+session is meant to edit by path. A small dev-only Vite plugin
+(`src/vite-playground-plugin.ts`) lets the in-browser editor write that file; the
+page ships no Code tab (it *is* the editor).

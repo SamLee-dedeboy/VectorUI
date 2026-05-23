@@ -10,6 +10,7 @@ import { Demo as LayoutPlaygroundDemo } from "./05-layout-playground/demo";
 import { Demo as ProceduralPathDemo } from "./06-procedural-path/demo";
 import { Demo as CurveSliderDemo } from "./07-curve-slider/demo";
 import { Demo as DesignSurfaceDemo } from "./08-design-surface/demo";
+import { Demo as PlaygroundDemo } from "../playground/demo";
 
 // Demo source, imported verbatim via Vite's `?raw` so each demo page can show
 // the exact code that produced it (the "Code" tab) — demo.tsx first.
@@ -179,6 +180,16 @@ export const DEMOS: DemoEntry[] = [
       "Phase 3 — direct-manipulation authoring. useEditHandle protocol; DesignSurface aggregation; per-component edit-mode sugar; constraint-respecting drags.",
     Component: DesignSurfaceDemo,
     sources: [{ name: "demo.tsx", code: designSurfaceDemoSrc }],
+  },
+  {
+    id: "playground",
+    title: "▶ Playground",
+    blurb:
+      "A live scratchpad: edit a real component file on the left, see it render on the right. Ask Claude Code to edit the same file and watch it hot-reload.",
+    proves:
+      "Dev-only sandbox over a real Sketch.tsx — shared editing surface for you and the agent. (No Code tab; the page is the editor.)",
+    Component: PlaygroundDemo,
+    // No `sources`: the page IS the editor, so there's nothing to mirror.
   },
 ];
 

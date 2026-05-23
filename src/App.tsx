@@ -30,6 +30,9 @@ function DemoView({ demo }: { demo: DemoEntry }) {
   // When on, the source opens in a panel BESIDE the demo — both stay visible.
   const [showCode, setShowCode] = useState(false);
   const Component = demo.Component!;
+  // The playground page is itself an editor, so it ships no `sources` — and
+  // the Show code toggle would just show an empty panel. Hide it in that case.
+  const hasSources = (demo.sources?.length ?? 0) > 0;
   return (
     <article>
       <a className="back" href="#/" onClick={() => navigate("")}>
@@ -38,16 +41,18 @@ function DemoView({ demo }: { demo: DemoEntry }) {
       <h1>{demo.title}</h1>
       <p className="proves">{demo.proves}</p>
 
-      <div className="view-toolbar">
-        <button
-          type="button"
-          className={showCode ? "code-toggle active" : "code-toggle"}
-          aria-pressed={showCode}
-          onClick={() => setShowCode((s) => !s)}
-        >
-          {showCode ? "Hide code" : "Show code"}
-        </button>
-      </div>
+      {hasSources ? (
+        <div className="view-toolbar">
+          <button
+            type="button"
+            className={showCode ? "code-toggle active" : "code-toggle"}
+            aria-pressed={showCode}
+            onClick={() => setShowCode((s) => !s)}
+          >
+            {showCode ? "Hide code" : "Show code"}
+          </button>
+        </div>
+      ) : null}
 
       <div className={showCode ? "demo-split is-split" : "demo-split"}>
         <div className="demo-pane">
