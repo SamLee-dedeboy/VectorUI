@@ -5,7 +5,8 @@ import { Frame, type SlotSpec } from "../../components/Frame";
 import { Flow } from "../../components/Flow";
 import { PathFlow } from "../../components/PathFlow";
 import { Pill } from "../../components/Pill";
-import { Text } from "../../components/Text";
+import { WrapText } from "../../components/WrapText";
+import { Float } from "../../components/Float";
 import { Path } from "../../svg/Path";
 import { tokens } from "../../tokens";
 import { accent } from "../../shapes";
@@ -282,19 +283,15 @@ export function Playground({ state, onFrameLayout }: PlaygroundProps) {
       <Frame.Slot name="body">
         <InspectMark label="slot: body (content)" enabled={state.inspect}>
           <g>
-            <Path d={accentShape.path} fill={tokens.color.accentSoft} />
             <IntrusionTrace enabled={state.inspect} d={accentShape.path} />
-            <Text
+            <WrapText
               {...tokens.type.body}
-              maxWidth="100%"
-              flowAround={{
-                intrusionAt: accentShape.intrusionAt,
-                gap: 14,
-              }}
+              gap={14}
               fill={tokens.color.ink}
             >
+              <Float d={accentShape.path} fill={tokens.color.accentSoft} />
               {bodyCopy[state.bodyLength]}
-            </Text>
+            </WrapText>
           </g>
         </InspectMark>
       </Frame.Slot>

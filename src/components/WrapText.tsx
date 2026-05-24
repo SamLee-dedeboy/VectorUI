@@ -11,7 +11,7 @@ import {
   measureWalkerBBox,
   shiftWalker,
 } from "../layout/pathWalker";
-import { spanFromPath, type SpanFn } from "../layout/intrusionFromPath";
+import { occupancyFromPath, type OccupancyFn } from "../layout/intrusionFromPath";
 import {
   isFloatElement,
   type FloatProps,
@@ -80,8 +80,8 @@ type FloatGeometry = {
   /** Anchor point offset within the bbox (top-left origin). */
   ax: number;
   ay: number;
-  /** Silhouette span sampler, in bbox-local coords (origin 0,0). */
-  span: SpanFn;
+  /** Silhouette occupancy sampler, in bbox-local coords (origin 0,0). */
+  occupancy: OccupancyFn;
 };
 
 const MAX_CONVERGE_PASSES = 4;
@@ -160,7 +160,7 @@ export function WrapText({
         const { ax, ay } = anchorOffsets(anchor, w, h);
         // Sample in bbox-local coords (origin 0,0) so placement is just a shift.
         const local = shiftWalker(walker, -bbox.minX, -bbox.minY);
-        const span = spanFromPath(local, {
+        const occupancy = occupancyFromPath(local, {
           height: bbox.height,
           ...(p.samples != null ? { samples: p.samples } : {}),
           ...(p.yResolution != null ? { yResolution: p.yResolution } : {}),
@@ -173,7 +173,7 @@ export function WrapText({
           h,
           ax,
           ay,
-          span,
+          occupancy,
         };
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -211,9 +211,9 @@ export function WrapText({
         const intervals: Array<[number, number]> = [];
         geometry.forEach((f, i) => {
           const { left, top } = places[i];
-          const s = f.span(yTop - top, yBot - top);
-          if (!s) return;
-          intervals.push([left + s[0], left + s[1]]);
+          for (const iv of f.occupancy(yTop - top, yBot - top)) {
+            intervals.push([left + iv[0], left + iv[1]]);
+          }
         });
         return intervals;
       };

@@ -127,34 +127,55 @@ export function intrusionFromPath(
   return intrusionFromReach(reach, reachOpts);
 }
 
-/** The horizontal extent `[minX, maxX]` a silhouette occupies over a band, or
- *  `null` when the band is clear of the path. Coordinates are in the path's
- *  own space (the same as the supplied walker). */
-export type SpanFn = (
+/** The occupied x-intervals a (possibly concave) silhouette covers over a band,
+ *  in the path's own coordinate space. Empty when the band is clear of the path.
+ *  A convex shape yields one interval; an archway/donut yields several, with the
+ *  gaps between them free for text to flow through. */
+export type OccupancyFn = (
   yTop: number,
   yBottom: number,
-) => [number, number] | null;
+) => Array<[number, number]>;
 
-export type SpanFromPathOptions = {
+export type OccupancyFromPathOptions = {
   /** Bounding-box height; clips the silhouette query to `[0, height]`. */
   height: number;
-  /** Path-walk sample count. Default 512. */
+  /** Path-walk sample count (polyline resolution). Default 512. */
   samples?: number;
-  /** Y-bucket resolution in layout units. Default 1. */
+  /** Sub-samples per text band when unioning. Default derived from band height. */
   yResolution?: number;
 };
 
+/** Merge sorted, possibly-overlapping intervals in place into a disjoint set. */
+function mergeIntervals(
+  ivals: Array<[number, number]>,
+): Array<[number, number]> {
+  if (ivals.length <= 1) return ivals;
+  ivals.sort((a, b) => a[0] - b[0]);
+  const out: Array<[number, number]> = [ivals[0]];
+  for (let i = 1; i < ivals.length; i++) {
+    const last = out[out.length - 1];
+    const cur = ivals[i];
+    if (cur[0] <= last[1]) last[1] = Math.max(last[1], cur[1]);
+    else out.push(cur);
+  }
+  return out;
+}
+
 /**
- * Build a `SpanFn` for a path silhouette: the `[minX, maxX]` it covers at each
- * y. Where `intrusionFromPath` collapses a band to a single reach from one
- * edge, this keeps **both** edges — the raw material for letting text flow on
- * either side of a float (occupancy), not just inset from one side. Same
- * bucketed-sampling approach, so it composes with the same walkers.
+ * Build an `OccupancyFn` for a path silhouette. Where `intrusionFromPath`
+ * collapses a band to a single reach from one edge, this returns the full set
+ * of occupied x-intervals — so text can flow on *either* side of a float AND
+ * through interior holes (an archway's doorway, a donut's centre).
+ *
+ * The path is sampled into a dense polyline once; each band is filled by the
+ * even-odd scanline rule (sort the polyline's crossings at a y, pair them into
+ * inside intervals), then the sub-samples across the band are unioned. This
+ * handles concave outlines a min/max hull can't.
  */
-export function spanFromPath(
+export function occupancyFromPath(
   pathOrWalker: string | PathWalker,
-  opts: SpanFromPathOptions,
-): SpanFn {
+  opts: OccupancyFromPathOptions,
+): OccupancyFn {
   const walker =
     typeof pathOrWalker === "string"
       ? pathWalkerFromData(pathOrWalker)
@@ -162,65 +183,45 @@ export function spanFromPath(
   const samples = Math.max(32, opts.samples ?? 512);
   const yResolution = Math.max(0.1, opts.yResolution ?? 1);
 
-  const bucketCount = Math.max(1, Math.ceil(opts.height / yResolution) + 1);
-  const mins = new Array<number | undefined>(bucketCount);
-  const maxs = new Array<number | undefined>(bucketCount);
-
+  // Dense polyline approximation of the (closed) outline.
+  const pts: Array<{ x: number; y: number }> = [];
   for (let i = 0; i <= samples; i++) {
     const s = walker.length === 0 ? 0 : (walker.length * i) / samples;
-    const p = walker.pointAtLength(s);
-    if (p.y < 0 || p.y > opts.height) continue;
-    const b = Math.min(
-      bucketCount - 1,
-      Math.max(0, Math.round(p.y / yResolution)),
-    );
-    const lo = mins[b];
-    const hi = maxs[b];
-    if (lo === undefined || p.x < lo) mins[b] = p.x;
-    if (hi === undefined || p.x > hi) maxs[b] = p.x;
+    pts.push(walker.pointAtLength(s));
   }
 
-  // Nearest-neighbour gap fill, both directions (matches intrusionFromPath).
-  const fill = (arr: (number | undefined)[]) => {
-    let last: number | undefined;
-    for (let i = 0; i < bucketCount; i++) {
-      if (arr[i] === undefined) arr[i] = last;
-      else last = arr[i];
+  // Even-odd scanline crossings at a single y → inside intervals.
+  const intervalsAtY = (y: number): Array<[number, number]> => {
+    const xs: number[] = [];
+    for (let i = 0; i < pts.length - 1; i++) {
+      const a = pts[i];
+      const b = pts[i + 1];
+      const ay = a.y;
+      const by = b.y;
+      // Edge straddles the scanline (half-open to avoid double-counting vertices).
+      if ((ay <= y && by > y) || (by <= y && ay > y)) {
+        const t = (y - ay) / (by - ay);
+        xs.push(a.x + t * (b.x - a.x));
+      }
     }
-    last = undefined;
-    for (let i = bucketCount - 1; i >= 0; i--) {
-      if (arr[i] === undefined) arr[i] = last;
-      else last = arr[i];
-    }
-  };
-  fill(mins);
-  fill(maxs);
-
-  const spanAt = (y: number): [number, number] | null => {
-    if (y < 0 || y > opts.height) return null;
-    const b = Math.min(
-      bucketCount - 1,
-      Math.max(0, Math.round(y / yResolution)),
-    );
-    const lo = mins[b];
-    const hi = maxs[b];
-    if (lo === undefined || hi === undefined) return null;
-    return [lo, hi];
+    if (xs.length < 2) return [];
+    xs.sort((p, q) => p - q);
+    const out: Array<[number, number]> = [];
+    // Pair consecutively (even-odd); drop an unpaired trailing crossing.
+    for (let i = 0; i + 1 < xs.length; i += 2) out.push([xs[i], xs[i + 1]]);
+    return out;
   };
 
-  // Union the per-sample spans across the band so a line as tall as several
-  // buckets occupies the widest extent any of them reaches.
   return (yTop, yBottom) => {
-    const steps = Math.max(1, Math.ceil((yBottom - yTop) / yResolution));
-    let lo = Infinity;
-    let hi = -Infinity;
+    if (yBottom <= 0 || yTop >= opts.height) return [];
+    const top = Math.max(0, yTop);
+    const bot = Math.min(opts.height, yBottom);
+    const steps = Math.max(1, Math.ceil((bot - top) / yResolution));
+    const all: Array<[number, number]> = [];
     for (let i = 0; i <= steps; i++) {
-      const y = yTop + ((yBottom - yTop) * i) / steps;
-      const span = spanAt(y);
-      if (!span) continue;
-      if (span[0] < lo) lo = span[0];
-      if (span[1] > hi) hi = span[1];
+      const y = top + ((bot - top) * i) / steps;
+      for (const iv of intervalsAtY(y)) all.push(iv);
     }
-    return Number.isFinite(lo) ? [lo, hi] : null;
+    return mergeIntervals(all);
   };
 }

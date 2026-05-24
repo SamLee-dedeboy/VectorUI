@@ -153,12 +153,12 @@ export {
   shiftWalker,
 } from "./layout/pathWalker";
 export type { PathWalker } from "./layout/pathWalker";
-export { intrusionFromPath, spanFromPath } from "./layout/intrusionFromPath";
+export { intrusionFromPath, occupancyFromPath } from "./layout/intrusionFromPath";
 export type {
   IntrusionFromPathSide,
   IntrusionFromPathOptions,
-  SpanFn,
-  SpanFromPathOptions,
+  OccupancyFn,
+  OccupancyFromPathOptions,
 } from "./layout/intrusionFromPath";
 export { curveFromPath } from "./layout/curveFromPath";
 export type { CurveFromPathOptions } from "./layout/curveFromPath";

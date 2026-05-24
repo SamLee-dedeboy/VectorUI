@@ -15,7 +15,6 @@ import { Demo as PlaygroundDemo } from "../playground/demo";
 // Demo source, imported verbatim via Vite's `?raw` so each demo page can show
 // the exact code that produced it (the "Code" tab) — demo.tsx first.
 import textFlowDemoSrc from "./01-text-flow/demo.tsx?raw";
-import textFlowSrc from "./01-text-flow/TextFlow.tsx?raw";
 import cornerBlobSrc from "../shapes/cornerBlob.ts?raw";
 import archFloatSrc from "../shapes/archFloat.ts?raw";
 import cardDemoSrc from "./02-card/demo.tsx?raw";
@@ -75,7 +74,6 @@ export const DEMOS: DemoEntry[] = [
     Component: TextFlowDemo,
     sources: [
       { name: "demo.tsx", code: textFlowDemoSrc },
-      { name: "TextFlow.tsx", code: textFlowSrc },
       { name: "cornerBlob.ts", code: cornerBlobSrc },
       { name: "archFloat.ts", code: archFloatSrc },
     ],

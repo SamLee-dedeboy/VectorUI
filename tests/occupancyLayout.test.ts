@@ -1,5 +1,5 @@
 import { beforeAll, describe, it, expect } from "vitest";
-import { spanFromPath } from "../src/layout/intrusionFromPath";
+import { occupancyFromPath } from "../src/layout/intrusionFromPath";
 import { layoutFlowParagraph } from "../src/layout/measureText";
 import type { PathWalker } from "../src/layout/pathWalker";
 import type { CurvePoint } from "../src/layout/walkPath";
@@ -32,8 +32,8 @@ function polylineWalker(pts: CurvePoint[]): PathWalker {
   };
 }
 
-describe("spanFromPath", () => {
-  it("returns the [minX, maxX] silhouette extent over a band", () => {
+describe("occupancyFromPath", () => {
+  it("returns one occupied interval for a convex box", () => {
     // A box 20..120 in x, 0..100 in y.
     const w = polylineWalker([
       { x: 20, y: 0 },
@@ -42,14 +42,14 @@ describe("spanFromPath", () => {
       { x: 20, y: 100 },
       { x: 20, y: 0 },
     ]);
-    const span = spanFromPath(w, { height: 100, samples: 2048 });
-    const mid = span(48, 52);
-    expect(mid).not.toBeNull();
-    expect(mid![0]).toBeCloseTo(20, 0);
-    expect(mid![1]).toBeCloseTo(120, 0);
+    const occ = occupancyFromPath(w, { height: 100, samples: 2048 });
+    const mid = occ(48, 52);
+    expect(mid.length).toBe(1);
+    expect(mid[0][0]).toBeCloseTo(20, 0);
+    expect(mid[0][1]).toBeCloseTo(120, 0);
   });
 
-  it("returns null outside the path's vertical extent", () => {
+  it("returns empty outside the path's vertical extent", () => {
     const w = polylineWalker([
       { x: 20, y: 0 },
       { x: 120, y: 0 },
@@ -57,8 +57,40 @@ describe("spanFromPath", () => {
       { x: 20, y: 100 },
       { x: 20, y: 0 },
     ]);
-    const span = spanFromPath(w, { height: 100 });
-    expect(span(150, 160)).toBeNull();
+    const occ = occupancyFromPath(w, { height: 100 });
+    expect(occ(150, 160)).toEqual([]);
+  });
+
+  it("returns TWO intervals across a concave archway's legs (doorway free)", () => {
+    // An archway: a solid bar (y 0..20) on two legs (x 0..30 and 90..120),
+    // with the doorway (x 30..90) open below the bar (y 20..100).
+    // Outline, traced as one closed concave polygon:
+    const w = polylineWalker([
+      { x: 0, y: 0 }, // outer top-left
+      { x: 120, y: 0 }, // outer top-right
+      { x: 120, y: 100 }, // right leg outer-bottom
+      { x: 90, y: 100 }, // right leg inner-bottom
+      { x: 90, y: 20 }, // up into the doorway (right jamb)
+      { x: 30, y: 20 }, // across under the bar to the left jamb
+      { x: 30, y: 100 }, // down the left leg inner edge
+      { x: 0, y: 100 }, // left leg outer-bottom
+      { x: 0, y: 0 }, // close
+    ]);
+    const occ = occupancyFromPath(w, { height: 100, samples: 4096 });
+
+    // Under the bar, between the legs: two occupied intervals with a gap.
+    const legBand = occ(58, 62);
+    expect(legBand.length).toBe(2);
+    expect(legBand[0][0]).toBeCloseTo(0, 0);
+    expect(legBand[0][1]).toBeCloseTo(30, 0);
+    expect(legBand[1][0]).toBeCloseTo(90, 0);
+    expect(legBand[1][1]).toBeCloseTo(120, 0);
+
+    // Across the solid bar: one full-width interval (doorway not yet open).
+    const barBand = occ(8, 12);
+    expect(barBand.length).toBe(1);
+    expect(barBand[0][0]).toBeCloseTo(0, 0);
+    expect(barBand[0][1]).toBeCloseTo(120, 0);
   });
 });
 

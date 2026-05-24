@@ -1,4 +1,5 @@
 import { Path } from "../../svg/Path";
+import { Circle } from "../../svg/Circle";
 import {
   distributeAlong,
   quadratic,
@@ -176,10 +177,10 @@ export function RadialMenu({
         transform={`translate(${hub.x} ${hub.y})`}
       >
         {/* When mode=line the cog softens to a plain disc — opacity rides `t`. */}
-        <circle r={34} fill={hubFill} />
+        <Circle r={34} fill={hubFill} />
         <Path d={cog(34)} fill={hubFill} opacity={t} />
         {[-10, 0, 10].map((dx) => (
-          <circle key={dx} cx={dx} cy={0} r={3} fill={tokens.color.accentInk} />
+          <Circle key={dx} cx={dx} r={3} fill={tokens.color.accentInk} />
         ))}
       </g>
     </>
