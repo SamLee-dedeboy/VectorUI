@@ -55,3 +55,52 @@ export function pathWalkerFromData(d: string): PathWalker {
     },
   };
 }
+
+/**
+ * Sampled bounding box of a walker's silhouette. A detached `<path>`'s native
+ * `getBBox` is unreliable across browsers, and we want the box to AGREE with
+ * `intrusionFromPath`, which works by sampling `pointAtLength`. So we sample
+ * the same walker and take the min/max — the box is therefore the silhouette's
+ * *sampled* extent (the same approximation the intrusion already makes), which
+ * is exactly what keeps a drawn shape and its wrap profile locked together.
+ */
+export function measureWalkerBBox(
+  walker: PathWalker,
+  samples = 512,
+): { minX: number; minY: number; width: number; height: number } {
+  const n = Math.max(2, samples);
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (let i = 0; i <= n; i++) {
+    const s = walker.length === 0 ? 0 : (walker.length * i) / n;
+    const p = walker.pointAtLength(s);
+    if (p.x < minX) minX = p.x;
+    if (p.y < minY) minY = p.y;
+    if (p.x > maxX) maxX = p.x;
+    if (p.y > maxY) maxY = p.y;
+  }
+  if (!Number.isFinite(minX)) return { minX: 0, minY: 0, width: 0, height: 0 };
+  return { minX, minY, width: maxX - minX, height: maxY - minY };
+}
+
+/**
+ * A `PathWalker` whose every sampled point is translated by `(dx, dy)`. Used to
+ * move a path's bounding-box origin to `(0, 0)` so its intrusion lines up with
+ * the text column's top-left, while the drawn path is shifted by the same
+ * amount — the two stay in lockstep.
+ */
+export function shiftWalker(
+  w: PathWalker,
+  dx: number,
+  dy: number,
+): PathWalker {
+  return {
+    length: w.length,
+    pointAtLength(s) {
+      const p = w.pointAtLength(s);
+      return { x: p.x + dx, y: p.y + dy };
+    },
+  };
+}

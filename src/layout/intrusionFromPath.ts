@@ -126,3 +126,101 @@ export function intrusionFromPath(
   if (opts.reachSteps !== undefined) reachOpts.steps = opts.reachSteps;
   return intrusionFromReach(reach, reachOpts);
 }
+
+/** The horizontal extent `[minX, maxX]` a silhouette occupies over a band, or
+ *  `null` when the band is clear of the path. Coordinates are in the path's
+ *  own space (the same as the supplied walker). */
+export type SpanFn = (
+  yTop: number,
+  yBottom: number,
+) => [number, number] | null;
+
+export type SpanFromPathOptions = {
+  /** Bounding-box height; clips the silhouette query to `[0, height]`. */
+  height: number;
+  /** Path-walk sample count. Default 512. */
+  samples?: number;
+  /** Y-bucket resolution in layout units. Default 1. */
+  yResolution?: number;
+};
+
+/**
+ * Build a `SpanFn` for a path silhouette: the `[minX, maxX]` it covers at each
+ * y. Where `intrusionFromPath` collapses a band to a single reach from one
+ * edge, this keeps **both** edges — the raw material for letting text flow on
+ * either side of a float (occupancy), not just inset from one side. Same
+ * bucketed-sampling approach, so it composes with the same walkers.
+ */
+export function spanFromPath(
+  pathOrWalker: string | PathWalker,
+  opts: SpanFromPathOptions,
+): SpanFn {
+  const walker =
+    typeof pathOrWalker === "string"
+      ? pathWalkerFromData(pathOrWalker)
+      : pathOrWalker;
+  const samples = Math.max(32, opts.samples ?? 512);
+  const yResolution = Math.max(0.1, opts.yResolution ?? 1);
+
+  const bucketCount = Math.max(1, Math.ceil(opts.height / yResolution) + 1);
+  const mins = new Array<number | undefined>(bucketCount);
+  const maxs = new Array<number | undefined>(bucketCount);
+
+  for (let i = 0; i <= samples; i++) {
+    const s = walker.length === 0 ? 0 : (walker.length * i) / samples;
+    const p = walker.pointAtLength(s);
+    if (p.y < 0 || p.y > opts.height) continue;
+    const b = Math.min(
+      bucketCount - 1,
+      Math.max(0, Math.round(p.y / yResolution)),
+    );
+    const lo = mins[b];
+    const hi = maxs[b];
+    if (lo === undefined || p.x < lo) mins[b] = p.x;
+    if (hi === undefined || p.x > hi) maxs[b] = p.x;
+  }
+
+  // Nearest-neighbour gap fill, both directions (matches intrusionFromPath).
+  const fill = (arr: (number | undefined)[]) => {
+    let last: number | undefined;
+    for (let i = 0; i < bucketCount; i++) {
+      if (arr[i] === undefined) arr[i] = last;
+      else last = arr[i];
+    }
+    last = undefined;
+    for (let i = bucketCount - 1; i >= 0; i--) {
+      if (arr[i] === undefined) arr[i] = last;
+      else last = arr[i];
+    }
+  };
+  fill(mins);
+  fill(maxs);
+
+  const spanAt = (y: number): [number, number] | null => {
+    if (y < 0 || y > opts.height) return null;
+    const b = Math.min(
+      bucketCount - 1,
+      Math.max(0, Math.round(y / yResolution)),
+    );
+    const lo = mins[b];
+    const hi = maxs[b];
+    if (lo === undefined || hi === undefined) return null;
+    return [lo, hi];
+  };
+
+  // Union the per-sample spans across the band so a line as tall as several
+  // buckets occupies the widest extent any of them reaches.
+  return (yTop, yBottom) => {
+    const steps = Math.max(1, Math.ceil((yBottom - yTop) / yResolution));
+    let lo = Infinity;
+    let hi = -Infinity;
+    for (let i = 0; i <= steps; i++) {
+      const y = yTop + ((yBottom - yTop) * i) / steps;
+      const span = spanAt(y);
+      if (!span) continue;
+      if (span[0] < lo) lo = span[0];
+      if (span[1] > hi) hi = span[1];
+    }
+    return Number.isFinite(lo) ? [lo, hi] : null;
+  };
+}

@@ -21,9 +21,19 @@ export type { OverflowWrap };
  * both sides. The Text component converts to pixel space internally.
  */
 export type FlowAround = {
-  intrusionAt: (yTopLayout: number, yBottomLayout: number) => number;
+  intrusionAt?: (yTopLayout: number, yBottomLayout: number) => number;
   /** Right-edge intrusion, for a shape that wraps text on both sides. */
   rightIntrusionAt?: (yTopLayout: number, yBottomLayout: number) => number;
+  /**
+   * Occupied x-intervals (layout units, column coords) over a line band. When
+   * given, supersedes `intrusionAt`/`rightIntrusionAt`: text flows into every
+   * *free* segment of the line — left of, between, and right of the floats —
+   * not just a single run inset from the edges.
+   */
+  occupancyAt?: (
+    yTopLayout: number,
+    yBottomLayout: number,
+  ) => Array<[number, number]>;
   /** Gap between the float's edge and the text, in layout units. */
   gap?: number;
 };
@@ -161,14 +171,23 @@ export function Text({
           gapPx: gap * mScale,
           // Convert the float's layout-unit profile(s) into the measurement
           // space (px in screen mode, layout units in layout mode).
-          intrusionAtPx: (yTopPx, yBottomPx) =>
-            flowAround.intrusionAt(yTopPx / mScale, yBottomPx / mScale) * mScale,
+          intrusionAtPx: flowAround.intrusionAt
+            ? (yTopPx, yBottomPx) =>
+                flowAround.intrusionAt!(yTopPx / mScale, yBottomPx / mScale) *
+                mScale
+            : undefined,
           rightIntrusionAtPx: flowAround.rightIntrusionAt
             ? (yTopPx, yBottomPx) =>
                 flowAround.rightIntrusionAt!(
                   yTopPx / mScale,
                   yBottomPx / mScale,
                 ) * mScale
+            : undefined,
+          occupancyAtPx: flowAround.occupancyAt
+            ? (yTopPx, yBottomPx) =>
+                flowAround
+                  .occupancyAt!(yTopPx / mScale, yBottomPx / mScale)
+                  .map(([s, e]): [number, number] => [s * mScale, e * mScale])
             : undefined,
         });
       }

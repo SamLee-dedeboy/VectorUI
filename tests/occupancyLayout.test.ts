@@ -1,0 +1,148 @@
+import { beforeAll, describe, it, expect } from "vitest";
+import { spanFromPath } from "../src/layout/intrusionFromPath";
+import { layoutFlowParagraph } from "../src/layout/measureText";
+import type { PathWalker } from "../src/layout/pathWalker";
+import type { CurvePoint } from "../src/layout/walkPath";
+
+/** A walker over a polyline through the given points. */
+function polylineWalker(pts: CurvePoint[]): PathWalker {
+  const segs = pts.slice(1).map((p, i) => ({
+    from: pts[i],
+    to: p,
+    len: Math.hypot(p.x - pts[i].x, p.y - pts[i].y),
+  }));
+  const total = segs.reduce((a, s) => a + s.len, 0);
+  return {
+    length: total,
+    pointAtLength(s) {
+      const clamped = Math.max(0, Math.min(total, s));
+      let acc = 0;
+      for (const seg of segs) {
+        if (clamped <= acc + seg.len) {
+          const t = seg.len === 0 ? 0 : (clamped - acc) / seg.len;
+          return {
+            x: seg.from.x + (seg.to.x - seg.from.x) * t,
+            y: seg.from.y + (seg.to.y - seg.from.y) * t,
+          };
+        }
+        acc += seg.len;
+      }
+      return segs[segs.length - 1].to;
+    },
+  };
+}
+
+describe("spanFromPath", () => {
+  it("returns the [minX, maxX] silhouette extent over a band", () => {
+    // A box 20..120 in x, 0..100 in y.
+    const w = polylineWalker([
+      { x: 20, y: 0 },
+      { x: 120, y: 0 },
+      { x: 120, y: 100 },
+      { x: 20, y: 100 },
+      { x: 20, y: 0 },
+    ]);
+    const span = spanFromPath(w, { height: 100, samples: 2048 });
+    const mid = span(48, 52);
+    expect(mid).not.toBeNull();
+    expect(mid![0]).toBeCloseTo(20, 0);
+    expect(mid![1]).toBeCloseTo(120, 0);
+  });
+
+  it("returns null outside the path's vertical extent", () => {
+    const w = polylineWalker([
+      { x: 20, y: 0 },
+      { x: 120, y: 0 },
+      { x: 120, y: 100 },
+      { x: 20, y: 100 },
+      { x: 20, y: 0 },
+    ]);
+    const span = spanFromPath(w, { height: 100 });
+    expect(span(150, 160)).toBeNull();
+  });
+});
+
+describe("layoutFlowParagraph — multi-segment occupancy", () => {
+  beforeAll(() => {
+    // pretext measures glyph widths through canvas; jsdom has none, so stub a
+    // 2D context at ≈0.55em/char (same shim the baseline test uses).
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const g = globalThis as any;
+    g.HTMLCanvasElement.prototype.getContext = function getContext(
+      kind: string,
+    ) {
+      if (kind !== "2d") return null;
+      return {
+        font: "16px sans-serif",
+        measureText(text: string) {
+          const m = /([\d.]+)px/.exec(this.font);
+          const px = m ? parseFloat(m[1]) : 16;
+          const width = text.length * px * 0.55;
+          return {
+            width,
+            actualBoundingBoxAscent: px * 0.8,
+            actualBoundingBoxDescent: px * 0.2,
+            actualBoundingBoxLeft: 0,
+            actualBoundingBoxRight: width,
+            fontBoundingBoxAscent: px * 0.85,
+            fontBoundingBoxDescent: px * 0.2,
+          };
+        },
+      };
+    };
+  });
+
+  it("pours text on both sides of a centred float (two runs per band)", () => {
+    const text =
+      "alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu " +
+      "nu xi omicron pi rho sigma tau upsilon phi chi psi omega one two three";
+    const columnWidthPx = 400;
+    const lineHeightPx = 20;
+    // A float occupying x∈[150,250] over the first three line bands (y<60).
+    const para = layoutFlowParagraph({
+      text,
+      font: "16px sans-serif",
+      columnWidthPx,
+      lineHeightPx,
+      occupancyAtPx: (yTop) =>
+        yTop < 60 ? [[150, 250]] : [],
+    });
+
+    // Group runs by baseline; the first band should have a left run (xPx≈0) and
+    // a right run (xPx≈250) — text flowing on both sides of the float.
+    const byBaseline = new Map<number, number[]>();
+    for (const l of para.lines) {
+      const xs = byBaseline.get(l.baselineYPx) ?? [];
+      xs.push(l.xPx);
+      byBaseline.set(l.baselineYPx, xs);
+    }
+    const firstBaseline = Math.min(...byBaseline.keys());
+    const firstRunXs = byBaseline.get(firstBaseline)!.sort((a, b) => a - b);
+    expect(firstRunXs.length).toBe(2);
+    expect(firstRunXs[0]).toBeCloseTo(0, 0);
+    expect(firstRunXs[1]).toBeCloseTo(250, 0);
+
+    // A band below the float (y≥60) is a single full-width run starting at 0.
+    const lowerBaselines = [...byBaseline.keys()].filter(
+      (b) => b > 60,
+    );
+    expect(lowerBaselines.length).toBeGreaterThan(0);
+    for (const b of lowerBaselines) {
+      expect(byBaseline.get(b)).toEqual([0]);
+    }
+  });
+
+  it("skips free segments narrower than the minimum (no sliver runs)", () => {
+    // Float leaves only a 30px gap on the right (< MIN_SEGMENT 48) → that
+    // sliver is skipped; text uses the wide left segment only.
+    const para = layoutFlowParagraph({
+      text: "alpha beta gamma delta epsilon zeta eta theta iota kappa lambda",
+      font: "16px sans-serif",
+      columnWidthPx: 400,
+      lineHeightPx: 20,
+      occupancyAtPx: () => [[370, 400]],
+    });
+    // No run should start past the float's left edge (370).
+    for (const l of para.lines) expect(l.xPx).toBeLessThan(370);
+  });
+});

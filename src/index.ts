@@ -33,6 +33,15 @@ export { Flow } from "./components/Flow";
 export type { FlowProps, FlowDirection, FlowAlign } from "./components/Flow";
 export { Pill } from "./components/Pill";
 export type { PillProps } from "./components/Pill";
+export { WrapText } from "./components/WrapText";
+export type { WrapTextProps } from "./components/WrapText";
+export { Float, isFloatElement } from "./components/Float";
+export type {
+  FloatProps,
+  FloatSide,
+  FloatAnchor,
+  FloatPosition,
+} from "./components/Float";
 export { CurveSlider } from "./components/CurveSlider";
 export type { CurveSliderProps } from "./components/CurveSlider";
 export { DesignSurface } from "./components/DesignSurface";
@@ -138,12 +147,18 @@ export type {
   FloatAroundRectOptions,
   RectIntrusionPair,
 } from "./layout/rectIntrusion";
-export { pathWalkerFromData } from "./layout/pathWalker";
+export {
+  pathWalkerFromData,
+  measureWalkerBBox,
+  shiftWalker,
+} from "./layout/pathWalker";
 export type { PathWalker } from "./layout/pathWalker";
-export { intrusionFromPath } from "./layout/intrusionFromPath";
+export { intrusionFromPath, spanFromPath } from "./layout/intrusionFromPath";
 export type {
   IntrusionFromPathSide,
   IntrusionFromPathOptions,
+  SpanFn,
+  SpanFromPathOptions,
 } from "./layout/intrusionFromPath";
 export { curveFromPath } from "./layout/curveFromPath";
 export type { CurveFromPathOptions } from "./layout/curveFromPath";

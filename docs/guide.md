@@ -169,6 +169,11 @@ reports, in layout units, how far the shape reaches into a line band from one
 edge. Supply `rightIntrusionAt` as well and the text wraps on both sides at
 once (e.g. poured through an archway).
 
+> For the common case — draw a shape *and* wrap text around it from a single
+> path string — reach for [`WrapText`/`Float`](#12-recipes) (§12). Raw
+> `flowAround` below stays the low-level escape hatch for analytical or
+> hand-tuned intrusions.
+
 ---
 
 ## 6. `Frame` — shape as container
@@ -509,6 +514,45 @@ heights** — the scene sizes itself.
 ```
 
 ### Text wrapping a shape
+
+For an **arbitrary path** — a Figma export, a hand-drawn outline — the high-level
+answer is `WrapText` + `Float`. Each `<Float>` is declared once: `WrapText` draws
+its path **and** derives the wrap contour from the same `d`, so the drawn shape
+and the contour the text hugs can't drift apart. Text flows into **every open
+region** of each line — left of, between, and right of the floats — so a float in
+the middle has text on both sides, and several floats fill the gaps. The bounding
+box is auto-measured (no `width`/`height` to pass), and the wrap width is
+inherited from the enclosing column `Flow` / `Frame` slot like any `<Text
+maxWidth="100%">` — so keep it in a column context (a *row* `Flow` doesn't publish
+a width, and the text would overflow).
+
+```tsx
+import { WrapText, Float, tokens } from "vectorui";
+
+<Flow direction="column" padding={28}>
+  <WrapText {...tokens.type.body} fill={tokens.color.ink} gap={16}>
+    <Float d={BLOB} anchor="center" x="50%" y="50%" fill={tokens.color.accent} />
+    Body text that flows around the blob on both sides, hugging its left and
+    right silhouettes, and squares back off above and below it…
+  </WrapText>
+</Flow>
+```
+
+**Placement.** A float is positioned by an `anchor` point — one of the four
+corners or `"center"` — placed at `x`/`y`. Those take a layout-unit number *or* a
+percentage: `x="50%"` is half the column width; `y="50%"` is half the **final
+block height** (resolved by a short fixed-point pass, since the height depends on
+how the text flows around the float and vice-versa — it converges in a pass or
+two because line count barely tracks a float's vertical position). `side` is a
+shorthand for the common anchors: `side="left"` → top-left at `x=0`,
+`side="right"` → top-right at `x="100%"`.
+
+The contour is *sampled* from the path (lower precision than an analytical
+profile); pass `width`/`height` on a `<Float>` to override the sampled box for a
+pathological path.
+
+The lower tiers below stay available when you need an analytical intrusion or
+hand-tuned profiles — `WrapText` is built on exactly this `flowAround` API.
 
 `flowAround.intrusionAt(yTop, yBottom)` reports, in layout units, how far a
 float reaches into each line band. The **shape kit** (public, imported from
