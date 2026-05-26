@@ -421,6 +421,10 @@ function FrameInner({
       const bbox = measureWalkerBBox(walker);
       const occ = occupancyFromPath(walker, {
         height: Math.max(0, bbox.minY + bbox.height),
+        // Shape-fit treats the shape as a CONTAINER text must stay inside —
+        // the band's safe interior = ranges that are inside at every sub-y
+        // (intersection), not the widest reach (union, the float-to-avoid mode).
+        combine: "intersect",
       });
 
       // Translate a slot-local y to path-coord y.

@@ -22,7 +22,6 @@ import scoopCardSrc from "../shapes/scoopCard.ts?raw";
 import triangleFloatSrc from "../shapes/triangleFloat.ts?raw";
 import wobbleSrc from "../shapes/wobble.ts?raw";
 import buttonSrc from "./02-card/Button.tsx?raw";
-import useTweenSrc from "./02-card/useTween.ts?raw";
 import radialMenuDemoSrc from "./03-radial-menu/demo.tsx?raw";
 import radialMenuSrc from "./03-radial-menu/RadialMenu.tsx?raw";
 import radialChromeSrc from "./03-radial-menu/chrome.ts?raw";
@@ -89,7 +88,6 @@ export const DEMOS: DemoEntry[] = [
       { name: "triangleFloat.ts", code: triangleFloatSrc },
       { name: "wobble.ts", code: wobbleSrc },
       { name: "Button.tsx", code: buttonSrc },
-      { name: "useTween.ts", code: useTweenSrc },
     ],
   },
   {

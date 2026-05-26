@@ -143,7 +143,35 @@ export type OccupancyFromPathOptions = {
   samples?: number;
   /** Sub-samples per text band when unioning. Default derived from band height. */
   yResolution?: number;
+  /**
+   * How to combine the per-sub-y interior intervals into a single band result.
+   * - `"union"` (default) — the widest extent the shape reaches over the band.
+   *   Right for treating the shape as a FLOAT TO AVOID: text must dodge any y
+   *   in the band where the shape exists, so use the worst-case reach.
+   * - `"intersect"` — the x-ranges that are inside the shape at *every* sub-y
+   *   in the band. Right for treating the shape as a CONTAINER text must STAY
+   *   INSIDE: only ranges continuously interior across the band are safe.
+   */
+  combine?: "union" | "intersect";
 };
+
+/** Intersect two lists of sorted, disjoint intervals (classic two-pointer). */
+function intersectIntervalLists(
+  a: Array<[number, number]>,
+  b: Array<[number, number]>,
+): Array<[number, number]> {
+  const out: Array<[number, number]> = [];
+  let i = 0;
+  let j = 0;
+  while (i < a.length && j < b.length) {
+    const lo = Math.max(a[i][0], b[j][0]);
+    const hi = Math.min(a[i][1], b[j][1]);
+    if (hi > lo) out.push([lo, hi]);
+    if (a[i][1] < b[j][1]) i++;
+    else j++;
+  }
+  return out;
+}
 
 /** Merge sorted, possibly-overlapping intervals in place into a disjoint set. */
 function mergeIntervals(
@@ -182,6 +210,7 @@ export function occupancyFromPath(
       : pathOrWalker;
   const samples = Math.max(32, opts.samples ?? 512);
   const yResolution = Math.max(0.1, opts.yResolution ?? 1);
+  const combine = opts.combine ?? "union";
 
   // Dense polyline approximation of the (closed) outline.
   const pts: Array<{ x: number; y: number }> = [];
@@ -217,6 +246,21 @@ export function occupancyFromPath(
     const top = Math.max(0, yTop);
     const bot = Math.min(opts.height, yBottom);
     const steps = Math.max(1, Math.ceil((bot - top) / yResolution));
+    if (combine === "intersect") {
+      // Pairwise-intersect interior across sub-ys: only x-ranges that are
+      // inside at EVERY sub-y of the band survive — the "stay inside" safe set.
+      let acc: Array<[number, number]> | null = null;
+      for (let i = 0; i <= steps; i++) {
+        const y = top + ((bot - top) * i) / steps;
+        const cur = intervalsAtY(y);
+        if (acc === null) acc = cur;
+        else acc = intersectIntervalLists(acc, cur);
+        if (acc.length === 0) return [];
+      }
+      return acc ?? [];
+    }
+    // Default "union": widest extent the shape reaches over the band — right
+    // for treating the shape as a float to AVOID.
     const all: Array<[number, number]> = [];
     for (let i = 0; i <= steps; i++) {
       const y = top + ((bot - top) * i) / steps;
