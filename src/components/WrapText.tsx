@@ -80,8 +80,13 @@ type FloatGeometry = {
   /** Anchor point offset within the bbox (top-left origin). */
   ax: number;
   ay: number;
-  /** Silhouette occupancy sampler, in bbox-local coords (origin 0,0). */
+  /** Silhouette occupancy sampler, in bbox-local coords (origin 0,0). Union
+   *  combine — the widest reach the float covers across a band; this is what
+   *  the surrounding body avoids. */
   occupancy: OccupancyFn;
+  /** Intersect-combine interior sampler (only when `children` is set), used
+   *  to fit text INSIDE the float's contour via shape-fit. */
+  insideOccupancy?: OccupancyFn;
 };
 
 const MAX_CONVERGE_PASSES = 4;
@@ -165,6 +170,16 @@ export function WrapText({
           ...(p.samples != null ? { samples: p.samples } : {}),
           ...(p.yResolution != null ? { yResolution: p.yResolution } : {}),
         });
+        // If the Float has text children, build a second sampler with the
+        // "stay inside" intersect semantic for the inside-text flowAround.
+        const insideOccupancy = p.children
+          ? occupancyFromPath(local, {
+              height: bbox.height,
+              combine: "intersect",
+              ...(p.samples != null ? { samples: p.samples } : {}),
+              ...(p.yResolution != null ? { yResolution: p.yResolution } : {}),
+            })
+          : undefined;
         return {
           props: p,
           rawMinX: bbox.minX,
@@ -174,6 +189,7 @@ export function WrapText({
           ax,
           ay,
           occupancy,
+          ...(insideOccupancy ? { insideOccupancy } : {}),
         };
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -181,7 +197,7 @@ export function WrapText({
       floats
         .map(
           (p) =>
-            `${p.d}|${p.side ?? ""}|${p.anchor ?? ""}|${p.width ?? ""}|${p.height ?? ""}`,
+            `${p.d}|${p.side ?? ""}|${p.anchor ?? ""}|${p.width ?? ""}|${p.height ?? ""}|${p.children ?? ""}`,
         )
         .join("¦"),
     ],
@@ -291,6 +307,51 @@ export function WrapText({
           filter={f.props.filter}
         />
       ))}
+      {/* Inside-text for floats that carry string children. The text fills
+          the float's contour via a shape-fit flowAround (interior intervals
+          intersected across each band, then complemented to give occupied).
+          Surrounding body text still wraps around the float — see the
+          per-float `occupancy` above (union mode). */}
+      {geometry.map((f, i) => {
+        if (!f.insideOccupancy || !f.props.children || !f.props.textStyle)
+          return null;
+        const insideOcc = f.insideOccupancy;
+        const fw = f.w;
+        const insideFlowAround: FlowAround = {
+          occupancyAt: (yT, yB) => {
+            const interior = insideOcc(yT, yB);
+            if (interior.length === 0) return [[0, fw]];
+            interior.sort((a, b) => a[0] - b[0]);
+            const occupied: Array<[number, number]> = [];
+            let cursor = 0;
+            for (const [s, e] of interior) {
+              const cs = Math.max(0, s);
+              const ce = Math.min(fw, e);
+              if (cs > cursor) occupied.push([cursor, cs]);
+              if (ce > cursor) cursor = ce;
+            }
+            if (cursor < fw) occupied.push([cursor, fw]);
+            return occupied;
+          },
+          gap: f.props.textPadding ?? 0,
+        };
+        return (
+          <g
+            key={`inside-${i}`}
+            transform={`translate(${placements[i].left} ${placements[i].top})`}
+          >
+            <Text
+              {...f.props.textStyle}
+              maxWidth={fw}
+              fill={f.props.textFill}
+              flowAround={insideFlowAround}
+              overflowWrap="normal"
+            >
+              {f.props.children}
+            </Text>
+          </g>
+        );
+      })}
       <Text
         {...textProps}
         font={font}

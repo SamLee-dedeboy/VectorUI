@@ -1,4 +1,5 @@
 import type { ReactElement } from "react";
+import type { TextStyle } from "../tokens";
 
 /**
  * Layer 3 — a declarative float for `<WrapText>`.
@@ -8,7 +9,12 @@ import type { ReactElement } from "react";
  * text-wrap intrusion from the same `d` string — one source of truth for the
  * drawn shape and the contour the text hugs. Use `side` to wrap from the left
  * or right edge; combine a left and a right `<Float>` to wrap text down the
- * middle. See the guide §12 "Text wrapping a shape".
+ * middle.
+ *
+ * A `<Float>` can also carry a string child — that text fills the float's
+ * interior contour (via shape-fit on the same path), so the float becomes a
+ * "shape with text inside" that the surrounding body still wraps around. See
+ * the guide §12 "Text wrapping a shape".
  */
 
 export type FloatSide = "left" | "right";
@@ -63,6 +69,20 @@ export type FloatProps = {
   samples?: number;
   yResolution?: number;
   reachSteps?: number;
+
+  /**
+   * Optional string rendered as text **inside** the float's contour. The text
+   * auto-fits the silhouette via shape-fit (the surrounding body still wraps
+   * around the float). Plain string only — same constraint as `<Text>`.
+   */
+  children?: string;
+  /** Type style for the inside text (a `tokens.type.*` token). Required when
+   *  `children` is set. */
+  textStyle?: TextStyle;
+  /** Fill for the inside text. */
+  textFill?: string;
+  /** Inset from the float's contour for the inside text, in layout units. */
+  textPadding?: number;
 };
 
 /**

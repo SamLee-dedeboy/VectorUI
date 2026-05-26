@@ -48,8 +48,12 @@ export type CardProps = Omit<
   height?: number | "auto";
   /** Title rendered in the header band. Omit for a card with no title. */
   title?: string;
-  /** Body paragraph — flows around the shape's interior contour. */
-  body?: string;
+  /** Body content. A string is rendered as a `Text` that auto-fits the shape's
+   *  interior contour (via the slot's shape-fit). Pass a `ReactNode` for
+   *  custom content — e.g. a `WrapText` with a `Float` that carves out an
+   *  inner feature; the slot still publishes the contour flowAround, so any
+   *  nested plain Text without its own `flowAround` picks it up. */
+  body?: string | ReactNode;
   /** Optional rigid content (typically a button or button row). Sits in a
    *  conservative safe rectangle at the bottom of the card. */
   actions?: ReactNode;
@@ -143,9 +147,13 @@ export function Card({
       ) : null}
       {body ? (
         <Frame.Slot name="body">
-          <Text {...bodyStyle} maxWidth="100%" fill={bodyFill}>
-            {body}
-          </Text>
+          {typeof body === "string" ? (
+            <Text {...bodyStyle} maxWidth="100%" fill={bodyFill}>
+              {body}
+            </Text>
+          ) : (
+            body
+          )}
         </Frame.Slot>
       ) : null}
       {actions ? <Frame.Slot name="actions">{actions}</Frame.Slot> : null}
