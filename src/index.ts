@@ -23,10 +23,15 @@ export type {
   RegionSlot,
   AnchorSlot,
   HTMLOverlaySlot,
+  ShapeFitSlot,
   SlotAfter,
   AnchorAlign,
   ShapeGenerator,
 } from "./components/Frame";
+export { Card } from "./components/Card";
+export type { CardProps } from "./components/Card";
+export { LandscapeCard } from "./components/LandscapeCard";
+export type { LandscapeCardProps } from "./components/LandscapeCard";
 export { PathFlow } from "./components/PathFlow";
 export type { PathFlowProps } from "./components/PathFlow";
 export { Flow } from "./components/Flow";

@@ -157,10 +157,15 @@ export function Text({
     maxWidth === "100%" ? (slot?.width ?? viewBoxWidth - x) : maxWidth;
   const maxWidthPx = maxWidthLayout * mScale;
 
+  // A shape-fit Frame slot publishes a pre-resolved FlowAround so a plain
+  // <Text> inside auto-fits the contour without the consumer wiring intrusion.
+  const effectiveFlowAround = flowAround ?? slot?.flowAround;
+
   const paragraph = useMemo(
     () => {
-      if (flowAround) {
-        const gap = flowAround.gap ?? 0;
+      if (effectiveFlowAround) {
+        const fa = effectiveFlowAround;
+        const gap = fa.gap ?? 0;
         return layoutFlowParagraph({
           text: children,
           font,
@@ -171,21 +176,20 @@ export function Text({
           gapPx: gap * mScale,
           // Convert the float's layout-unit profile(s) into the measurement
           // space (px in screen mode, layout units in layout mode).
-          intrusionAtPx: flowAround.intrusionAt
+          intrusionAtPx: fa.intrusionAt
             ? (yTopPx, yBottomPx) =>
-                flowAround.intrusionAt!(yTopPx / mScale, yBottomPx / mScale) *
-                mScale
+                fa.intrusionAt!(yTopPx / mScale, yBottomPx / mScale) * mScale
             : undefined,
-          rightIntrusionAtPx: flowAround.rightIntrusionAt
+          rightIntrusionAtPx: fa.rightIntrusionAt
             ? (yTopPx, yBottomPx) =>
-                flowAround.rightIntrusionAt!(
+                fa.rightIntrusionAt!(
                   yTopPx / mScale,
                   yBottomPx / mScale,
                 ) * mScale
             : undefined,
-          occupancyAtPx: flowAround.occupancyAt
+          occupancyAtPx: fa.occupancyAt
             ? (yTopPx, yBottomPx) =>
-                flowAround
+                fa
                   .occupancyAt!(yTopPx / mScale, yBottomPx / mScale)
                   .map(([s, e]): [number, number] => [s * mScale, e * mScale])
             : undefined,
@@ -201,7 +205,7 @@ export function Text({
       });
     },
     // fontsReady is a measurement dependency: caches flush when it flips.
-    [children, font, maxWidthPx, lineHeight, letterSpacing, fontsReady, flowAround, overflowWrap, mScale],
+    [children, font, maxWidthPx, lineHeight, letterSpacing, fontsReady, effectiveFlowAround, overflowWrap, mScale],
   );
 
   // Report block size back to a parent (e.g. a height="auto" Frame). The

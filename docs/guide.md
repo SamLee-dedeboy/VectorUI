@@ -262,6 +262,39 @@ slot resolves to that slot's width.
 > Tip: for a column of content inside a Frame, put **one** region slot
 > containing a [`Flow`](#7-flow--linear-layout) rather than many stacked slots.
 
+### Shape-fit slots — content auto-follows the contour
+
+A `"shape-fit"` slot makes the slot's content track the Frame's actual shape
+boundary instead of sitting in a hand-coded rectangle. It uses the
+[`occupancyFromPath`](#11-hooks--layout-utilities) sampler internally, so it
+works for **any** `shape` you pass to the Frame — no per-shape intrusion to
+wire.
+
+| Mode | Effect |
+|------|--------|
+| `"text"` (default) | Slot publishes a per-band `flowAround`; a child `Text` (with no explicit `flowAround`) reflows to fit the shape's interior, hugging dents and curves. |
+| `"safe"` | Slot collapses to the largest conservative inset rectangle inside the shape across its vertical band — for rigid widgets (a `Pill`, an image) that can't reflow. |
+
+```ts
+type ShapeFitSlot = {
+  type: "shape-fit";
+  mode?: "text" | "safe";              // default "text"
+  x?: number;                          // defaults to padding
+  y: number | { after: string; gap? };
+  width?: number | "fill";             // defaults to "fill"
+  height: number | "fill" | "content";
+  /** Override shape to fit inside; defaults to the Frame's own `shape`.
+   *  Lets a slot fit inside an inner feature (e.g. a triangle whose title
+   *  fills it) different from the Frame's outline. */
+  shape?: ShapeGenerator;
+  padding?: number;                    // inset from the contour
+};
+```
+
+This is what powers the library's [`Card`](#12-recipes) — body text wraps the
+card's scoop or blob; actions sit in a derived safe rectangle — without the
+consumer wiring any intrusion.
+
 ---
 
 ## 7. `Flow` — linear layout

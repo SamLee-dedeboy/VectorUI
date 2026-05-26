@@ -13,6 +13,12 @@ import { SlotContext } from "../layout/slot";
 import { useMeasuredBounds } from "../layout/measureBounds";
 import { useEditHandle } from "../layout/editHandles";
 import type { CurvePoint } from "../layout/walkPath";
+import {
+  pathWalkerFromData,
+  measureWalkerBBox,
+} from "../layout/pathWalker";
+import { occupancyFromPath } from "../layout/intrusionFromPath";
+import type { FlowAround } from "./Text";
 import { DesignSurface } from "./DesignSurface";
 
 /**
@@ -89,7 +95,44 @@ export type HTMLOverlaySlot = {
   height: number;
 };
 
-export type SlotSpec = RegionSlot | AnchorSlot | HTMLOverlaySlot;
+/**
+ * A region slot whose content auto-fits the Frame's shape (or an override
+ * shape). The Frame samples the shape's interior per band via
+ * `occupancyFromPath`; the slot then either publishes a contour-aware
+ * `flowAround` so a child `Text` reflows to the silhouette ("text" mode), or
+ * collapses to the largest conservative safe rectangle inside the shape
+ * across this slot's vertical band ("safe" mode, for rigid widgets like a
+ * button row).
+ *
+ * Reuses every `RegionSlot` knob (`x`/`y`/`width`/`height` + `{ after }`
+ * stacking + auto-size derivation). The contour is derived after the Frame's
+ * size and path settle — same one-frame settle the rest of Frame already does.
+ */
+export type ShapeFitSlot = {
+  type: "shape-fit";
+  /** `"text"` — slot publishes a per-band contour `flowAround`; a child `Text`
+   *  with no explicit `flowAround` reflows to the shape's interior.
+   *  `"safe"` — slot shrinks to the largest conservative inset rectangle
+   *  inside the shape across this slot's y-band, so rigid widgets fit. */
+  mode?: "text" | "safe";
+  x?: number;
+  y: number | SlotAfter;
+  width?: number | "fill";
+  height: number | "fill" | "content";
+  /** Override shape to fit inside; defaults to the Frame's own `shape`. Lets
+   *  a slot fit inside an inner feature shape (e.g. a triangle whose title
+   *  fills it) different from the Frame's outline. Called with the slot's
+   *  resolved (width, height); the returned path is in slot-local coords. */
+  shape?: ShapeGenerator;
+  /** Inset from the contour, layout units. */
+  padding?: number;
+};
+
+export type SlotSpec =
+  | RegionSlot
+  | AnchorSlot
+  | HTMLOverlaySlot
+  | ShapeFitSlot;
 
 /** A path generator: returns SVG path data for a (width, height) box. */
 export type ShapeGenerator = (width: number, height: number) => string;
@@ -108,6 +151,8 @@ type Placement = {
 
 type FrameContextValue = {
   placements: Record<string, Placement>;
+  /** Per-slot flowAround for shape-fit slots; missing for other slot types. */
+  slotFlowArounds: Record<string, FlowAround>;
   reportSize: (name: string, size: Size) => void;
 };
 
@@ -198,14 +243,28 @@ function FrameInner({
   }, []);
 
   // Resolve every slot's geometry, then the Frame width and height, then
-  // the path.
-  const { placements, frameHeight, frameWidth } = useMemo(() => {
+  // the path. ShapeFit slots are placed nominally here; refined below.
+  const {
+    placements: nominal,
+    slotHeights,
+    frameHeight,
+    frameWidth,
+  } = useMemo(() => {
     const entries = Object.entries(slots);
     const yCache = new Map<string, number>();
     const visiting = new Set<string>();
 
-    // Effective height of a region slot.
-    const regionHeight = (name: string, slot: RegionSlot): number => {
+    // A "region-like" slot is anything that occupies a rectangle and can
+    // participate in `{ after }` stacking + auto-size derivation. ShapeFit
+    // slots use the same x/y/width/height knobs, so they're handled
+    // identically here; the contour-specific refinement happens later, after
+    // the path is generated.
+    type RegionLike = RegionSlot | ShapeFitSlot;
+    const isRegionLike = (s: SlotSpec): s is RegionLike =>
+      s.type === "region" || s.type === "shape-fit";
+
+    // Effective height of a region-like slot.
+    const regionHeight = (name: string, slot: RegionLike): number => {
       if (slot.height === "content") return measured[name]?.h ?? 0;
       if (slot.height === "fill") {
         return height === "auto"
@@ -215,12 +274,12 @@ function FrameInner({
       return slot.height;
     };
 
-    // y of a region slot — a number, or stacked below another slot.
+    // y of a region-like slot — a number, or stacked below another slot.
     function resolveY(name: string): number {
       const cached = yCache.get(name);
       if (cached !== undefined) return cached;
       const slot = slots[name];
-      if (!slot || slot.type !== "region") return 0;
+      if (!slot || !isRegionLike(slot)) return 0;
       if (visiting.has(name)) return 0; // cycle guard
       visiting.add(name);
 
@@ -230,7 +289,7 @@ function FrameInner({
       } else {
         const ref = slots[slot.y.after];
         y =
-          ref && ref.type === "region"
+          ref && isRegionLike(ref)
             ? resolveY(slot.y.after) +
               regionHeight(slot.y.after, ref) +
               (slot.y.gap ?? 0)
@@ -241,12 +300,12 @@ function FrameInner({
       return y;
     }
 
-    // Auto height: the extent of the lowest region slot.
+    // Auto height: the extent of the lowest region-like slot.
     let resolvedHeight: number;
     if (height === "auto") {
       let bottom = 0;
       for (const [name, slot] of entries) {
-        if (slot.type === "region") {
+        if (isRegionLike(slot)) {
           bottom = Math.max(bottom, resolveY(name) + regionHeight(name, slot));
         }
       }
@@ -255,8 +314,8 @@ function FrameInner({
       resolvedHeight = height;
     }
 
-    // A region slot's left edge: explicit, or the Frame's padding by default.
-    const regionX = (slot: RegionSlot): number => slot.x ?? padding;
+    // A region-like slot's left edge: explicit, or the Frame's padding by default.
+    const regionX = (slot: RegionLike): number => slot.x ?? padding;
 
     // Auto width: rightmost edge across slots that declare a NUMERIC width.
     // `"fill"` (and omitted) slots are excluded — they fill into whatever the
@@ -267,7 +326,7 @@ function FrameInner({
     if (width === "auto") {
       let right = 0;
       for (const [, slot] of entries) {
-        if (slot.type === "region" && typeof slot.width === "number") {
+        if (isRegionLike(slot) && typeof slot.width === "number") {
           right = Math.max(right, regionX(slot) + slot.width);
         } else if (slot.type === "html-overlay") {
           right = Math.max(right, slot.x + slot.width);
@@ -278,23 +337,26 @@ function FrameInner({
       resolvedWidth = width;
     }
 
-    // A region slot's width: explicit number, or `"fill"`/omitted → the
+    // A region-like slot's width: explicit number, or `"fill"`/omitted → the
     // content box from its x to the right padding edge of the resolved Frame.
-    const regionWidth = (slot: RegionSlot): number => {
+    const regionWidth = (slot: RegionLike): number => {
       if (typeof slot.width === "number") return slot.width;
       return Math.max(0, resolvedWidth - regionX(slot) - padding);
     };
 
-    // Now place every slot.
+    // Now place every slot. Region and shape-fit get the same nominal
+    // placement; shape-fit is refined below once the path is known.
     const placed: Record<string, Placement> = {};
+    const slotHeights: Record<string, number> = {};
     for (const [name, slot] of entries) {
-      if (slot.type === "region") {
+      if (isRegionLike(slot)) {
         placed[name] = {
           tx: regionX(slot),
           ty: resolveY(name),
           slotWidth: regionWidth(slot),
-          kind: "region",
+          kind: slot.type,
         };
+        slotHeights[name] = regionHeight(name, slot);
       } else if (slot.type === "anchor") {
         const ax = slot.x < 0 ? resolvedWidth + slot.x : slot.x;
         const ay = slot.y < 0 ? resolvedHeight + slot.y : slot.y;
@@ -318,6 +380,7 @@ function FrameInner({
     }
     return {
       placements: placed,
+      slotHeights,
       frameHeight: resolvedHeight,
       frameWidth: resolvedWidth,
     };
@@ -326,13 +389,125 @@ function FrameInner({
   // The path is generated last, with the final (w, h).
   const d = shape(frameWidth, frameHeight);
 
+  // Shape-fit refinement: for each shape-fit slot, sample the path (or the
+  // slot's override shape) to either (a) publish a per-band flowAround so a
+  // child Text auto-fits the contour, or (b) collapse the slot to the largest
+  // safe rectangle for rigid widgets. Both are derived AFTER the path so the
+  // contour matches what's drawn. Memoised on `d` + nominal placements; the
+  // settle frame catches size-driven shape changes.
+  const { placements, slotFlowArounds } = useMemo(() => {
+    const flowArounds: Record<string, FlowAround> = {};
+    const refined: Record<string, Placement> = {};
+    for (const [name, slot] of Object.entries(slots)) {
+      if (slot.type !== "shape-fit") continue;
+      const placement = nominal[name];
+      if (!placement) continue;
+      const mode = slot.mode ?? "text";
+      const pad = slot.padding ?? 0;
+      // Slot's path: an override shape (slot-local coords) or the Frame's `d`
+      // (Frame coords). For frame coords, we translate queries by the slot's
+      // (tx, ty) to map slot-local <-> path-coord.
+      const overrideShape = slot.shape;
+      const pathD = overrideShape
+        ? overrideShape(placement.slotWidth, slotHeights[name] ?? 0)
+        : d;
+      const inSlotCoords = !!overrideShape;
+      let walker;
+      try {
+        walker = pathWalkerFromData(pathD);
+      } catch {
+        continue; // no DOM (jsdom on tests); skip — slot stays as nominal rect
+      }
+      const bbox = measureWalkerBBox(walker);
+      const occ = occupancyFromPath(walker, {
+        height: Math.max(0, bbox.minY + bbox.height),
+      });
+
+      // Translate a slot-local y to path-coord y.
+      const toPathY = (y: number) =>
+        inSlotCoords ? y : placement.ty + y;
+      // Translate a path-coord x to slot-local x.
+      const toSlotX = (x: number) =>
+        inSlotCoords ? x : x - placement.tx;
+
+      if (mode === "text") {
+        // occupancyAt returns OCCUPIED intervals (in slot-local x) — the
+        // complement of the shape interior within [0, slotWidth] — so the
+        // multi-segment text pour treats the interior as the FREE region.
+        flowArounds[name] = {
+          occupancyAt: (yT, yB) => {
+            const interior = occ(toPathY(yT), toPathY(yB));
+            const within: Array<[number, number]> = [];
+            for (const [s, e] of interior) {
+              const cs = Math.max(0, toSlotX(s));
+              const ce = Math.min(placement.slotWidth, toSlotX(e));
+              if (ce > cs) within.push([cs, ce]);
+            }
+            if (within.length === 0) return [[0, placement.slotWidth]];
+            within.sort((a, b) => a[0] - b[0]);
+            const occupied: Array<[number, number]> = [];
+            let cursor = 0;
+            for (const [s, e] of within) {
+              if (s > cursor) occupied.push([cursor, s]);
+              if (e > cursor) cursor = e;
+            }
+            if (cursor < placement.slotWidth)
+              occupied.push([cursor, placement.slotWidth]);
+            return occupied;
+          },
+          gap: pad,
+        };
+      } else {
+        // mode === "safe": pick the conservative inscribed rect across the
+        // slot's y-band (max of left edges, min of right edges).
+        const slotH = slotHeights[name] ?? 0;
+        const samples = Math.max(2, Math.ceil(slotH / 4));
+        let maxLeft = 0;
+        let minRight = Infinity;
+        for (let i = 0; i <= samples; i++) {
+          const yLocal = slotH === 0 ? 0 : (slotH * i) / samples;
+          const intervals = occ(toPathY(yLocal), toPathY(yLocal) + 1);
+          if (intervals.length === 0) continue;
+          // Largest interval at this y wins (multi-lobe shapes pick the
+          // biggest contiguous interior).
+          let best = intervals[0];
+          for (const iv of intervals) {
+            if (iv[1] - iv[0] > best[1] - best[0]) best = iv;
+          }
+          const lSlot = toSlotX(best[0]);
+          const rSlot = toSlotX(best[1]);
+          if (lSlot > maxLeft) maxLeft = lSlot;
+          if (rSlot < minRight) minRight = rSlot;
+        }
+        if (Number.isFinite(minRight)) {
+          const left = Math.max(0, maxLeft + pad);
+          const right = Math.min(placement.slotWidth, minRight - pad);
+          if (right - left >= 1) {
+            refined[name] = {
+              ...placement,
+              tx: placement.tx + left,
+              slotWidth: right - left,
+            };
+          }
+        }
+      }
+    }
+    if (Object.keys(refined).length === 0) {
+      return { placements: nominal, slotFlowArounds: flowArounds };
+    }
+    return {
+      placements: { ...nominal, ...refined },
+      slotFlowArounds: flowArounds,
+    };
+  }, [d, nominal, slotHeights, slots]);
+
   useEffect(() => {
     onLayout?.({ width: frameWidth, height: frameHeight });
   }, [onLayout, frameWidth, frameHeight]);
 
   const ctx = useMemo<FrameContextValue>(
-    () => ({ placements, reportSize }),
-    [placements, reportSize],
+    () => ({ placements, slotFlowArounds, reportSize }),
+    [placements, slotFlowArounds, reportSize],
   );
 
   return (
@@ -434,9 +609,14 @@ function FrameSlot({ name, children }: FrameSlotProps) {
     ctx.reportSize(name, { w: b.width, h: b.height }),
   );
 
+  const flowAround = ctx.slotFlowArounds[name];
+  const slotInfo = flowAround
+    ? { width: placement.slotWidth, flowAround }
+    : { width: placement.slotWidth };
+
   return (
     <g transform={`translate(${placement.tx} ${placement.ty})`}>
-      <SlotContext.Provider value={{ width: placement.slotWidth }}>
+      <SlotContext.Provider value={slotInfo}>
         <g ref={contentRef}>{children}</g>
       </SlotContext.Provider>
     </g>

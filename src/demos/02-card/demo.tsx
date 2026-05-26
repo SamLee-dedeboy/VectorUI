@@ -1,18 +1,28 @@
+import { useMemo, useState } from "react";
 import { VectorUIRoot } from "../../components/VectorUIRoot";
 import { Flow } from "../../components/Flow";
-import { Card } from "./Card";
-import { LandscapeCard } from "./LandscapeCard";
+import { Card } from "../../components/Card";
+import { LandscapeCard } from "../../components/LandscapeCard";
+import { scoopCard, triangleFloat, wobbleEdge } from "../../shapes";
+import { Button } from "./Button";
+import { useTween } from "./useTween";
 
 /**
  * Demo 2 — non-rectangular card (SPEC §11).
  *
- * Two cards, each a `Frame` with named slots — but different shapes. Version
- * A's outline carves a scoop into the left edge and the body text follows it;
- * version B is a hand-drawn postcard with a wobbly rectangular outline and a
- * mountain-silhouette horizon between title and body.
+ * Both cards are now the library's reusable components — `<Card>` and
+ * `<LandscapeCard>` — and the SHAPES are constructed here in `demo.tsx` and
+ * passed as props. Card knows nothing about scoops; LandscapeCard knows
+ * nothing about triangles. The body/title text auto-follow whatever boundary
+ * the demo passes in, because Frame's `shape-fit` slots derive the contour
+ * from the path via the occupancy engine.
  *
- * Proves: `Frame`, the slot system, path-as-container, flow-around — and that
- * "the path is the container" supports more than one card design.
+ * Version A constructs a `scoopCard` (with hover-driven scoop depth + wobble)
+ * and passes its path to `<Card shape={...}>`. Version B constructs a wobbly
+ * rect for the outer card and a `triangleFloat` for the inner feature.
+ *
+ * Proves: Frame as a shape-container with contour-fit slots; arbitrary shape
+ * passed in; rigid widgets in a derived safe rectangle.
  */
 
 const BODY_A =
@@ -24,6 +34,72 @@ const BODY_B =
 const ROOT_WIDTH = 520;
 const MARGIN = 56;
 
+// ---- Version A: scoop shape built here, passed as a prop ----
+
+const SCOOP_TOP = 64;       // where the scoop band starts in card-y
+const SCOOP_HEIGHT = 150;
+const BASE_SCOOP_DEPTH = 104;
+
+function ScoopShapedCard() {
+  const [hovered, setHovered] = useState(false);
+  const morph = useTween(hovered ? 1 : 0);
+  // Same hover-deepens-scoop + hand-drawn wobble as the original demo. The
+  // shape recomputes per morph; the Card body's shape-fit slot re-flows the
+  // text to follow the new contour every frame.
+  const shape = useMemo(
+    () =>
+      scoopCard({
+        cornerRadius: 22,
+        scoopTop: SCOOP_TOP,
+        scoopHeight: SCOOP_HEIGHT,
+        depth: BASE_SCOOP_DEPTH * (1 + morph * 0.42),
+        wobble: morph * 5,
+      }).path,
+    [morph],
+  );
+
+  return (
+    <Card
+      shape={shape}
+      width={400}
+      title="Text follows the path"
+      body={BODY_A}
+      actions={<Button>Got it</Button>}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{ cursor: "default" }}
+    />
+  );
+}
+
+// ---- Version B: outer card + inner triangle, both built here, both as props ----
+
+const TRI_W = 220;
+const TRI_H = 175;
+const CARD_WOBBLE = 12;
+const TRIANGLE_WOBBLE = 22;
+
+const round = (n: number) => Math.round(n * 100) / 100;
+
+/** Hand-drawn rectangular outline with wobbly edges. */
+function wobblyRect(w: number, h: number): string {
+  const cr = Math.min(w, h) * 0.025;
+  const p = round;
+  const d: string[] = [`M ${p(cr)} 0`];
+  wobbleEdge(d, cr, 0, w - cr, 0, CARD_WOBBLE, 0.4);
+  d.push(`Q ${p(w)} 0 ${p(w)} ${p(cr)}`);
+  wobbleEdge(d, w, cr, w, h - cr, CARD_WOBBLE, 1.8);
+  d.push(`Q ${p(w)} ${p(h)} ${p(w - cr)} ${p(h)}`);
+  wobbleEdge(d, w - cr, h, cr, h, CARD_WOBBLE, 3.1);
+  d.push(`Q 0 ${p(h)} 0 ${p(h - cr)}`);
+  wobbleEdge(d, 0, h - cr, 0, cr, CARD_WOBBLE, 4.6);
+  d.push(`Q 0 0 ${p(cr)} 0`, "Z");
+  return d.join(" ");
+}
+
+const triangle = (_w: number, _h: number) =>
+  triangleFloat({ width: TRI_W, height: TRI_H, wobble: TRIANGLE_WOBBLE }).path;
+
 export function Demo() {
   return (
     <div>
@@ -32,7 +108,10 @@ export function Demo() {
         scoop into its left edge and pours the body around it — hover to deepen
         the scoop and wobble all four edges. <strong>Version B</strong> is a
         hand-drawn postcard whose title sits inside a triangle, with the body
-        text wrapping the triangle's wobbly right slope.
+        text wrapping the triangle's wobbly right slope. Both cards are the
+        library's reusable <code>Card</code> / <code>LandscapeCard</code>; the
+        shapes are constructed here in <code>demo.tsx</code> and passed as
+        props.
       </p>
 
       <p className="variant-label">
@@ -43,30 +122,41 @@ export function Demo() {
         height="content"
         style={{ maxWidth: ROOT_WIDTH, background: "#f0efe9" }}
       >
-        <Flow padding={MARGIN} align="center" crossSize={ROOT_WIDTH - MARGIN * 2}>
-          <Card
-            width={400}
-            scoopDepth={104}
-            title="Text follows the path"
-            body={BODY_A}
-            actionLabel="Got it"
-          />
+        <Flow
+          padding={MARGIN}
+          align="center"
+          crossSize={ROOT_WIDTH - MARGIN * 2}
+        >
+          <ScoopShapedCard />
         </Flow>
       </VectorUIRoot>
 
       <p className="variant-label">
-        Version B — hand-drawn postcard, title in a triangle, body wraps its slope
+        Version B — hand-drawn postcard, title in a triangle, body wraps its
+        slope
       </p>
       <VectorUIRoot
         width={ROOT_WIDTH}
         height="content"
         style={{ maxWidth: ROOT_WIDTH, background: "#e8e3d3" }}
       >
-        <Flow padding={MARGIN} align="center" crossSize={ROOT_WIDTH - MARGIN * 2}>
+        <Flow
+          padding={MARGIN}
+          align="center"
+          crossSize={ROOT_WIDTH - MARGIN * 2}
+        >
           <LandscapeCard
+            outline={wobblyRect}
+            feature={triangle}
+            featureWidth={TRI_W}
+            featureHeight={TRI_H}
             width={400}
             title="A spooky wobbly title that follows the path"
             body={BODY_B}
+            surface="#f3ecde"
+            featureFill="#243029"
+            titleFill="#f3ecde"
+            bodyFill="#3d4540"
           />
         </Flow>
       </VectorUIRoot>
