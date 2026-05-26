@@ -14,6 +14,7 @@ one route each via the hash router.
 | `#/06-procedural-path` | **6 · Procedural path with live reflow** | One closed-form function feeding both `ShapeGenerator` and `Text`'s `intrusionAt` — slider input morphs the silhouette and reflows the paragraph on one frame. |
 | `#/07-curve-slider` | **7 · CurveSlider** | First-principles components — a value selector whose track *is* the function (volume cusp, hike elevation, full-circle clock). |
 | `#/08-design-surface` | **8 · DesignSurface** | Direct-manipulation edit mode — `useEditHandle` protocol; drags that cascade through the layout (scoop → text rewrap → slot height → Frame auto-size). |
+| `#/09-animation` | **9 · Animation — drive a prop over time** | Animation as a render-time concern — five RAF hooks (`useTween`, `useTweenedNumbers`, `useTweenedPoints`, `useTweenedPath`, `useStaggeredReveal`) + shared easings. Three sub-scenes show the same recipe applied to a child transform, a layout input, and a `shape` prop. |
 | `#/playground` | **▶ Playground** | A live scratchpad (dev only): edit the real `src/playground/Sketch.tsx` on the left, see it render on the right. Both the in-browser editor and Claude Code write the same file; either edit hot-reloads. |
 
 Demo 1 is the headline: a column of body text wrapping a shape's silhouette —
@@ -28,7 +29,8 @@ Each demo folder separates the **reusable component** from the **demo page**:
   hard-coded arguments. The hash router renders this.
 - `<Component>.tsx` — the reusable component (`Card`, `RadialMenu`,
   `MorphCard`, `Playground`, …), parameterized entirely by props.
-- helpers (`Button.tsx`, `Icon.tsx`, `cornerBlob.ts`, `useTween.ts`, …).
+- helpers (`Button.tsx`, `Icon.tsx`, `cornerBlob.ts`, …). Animation hooks
+  now live in the library (`src/layout/tween.ts`) — demos consume them.
 
 So `02-card/demo.tsx` imports `02-card/Card.tsx` and passes it arguments — the
 component carries no demo-specific hard-coded content. Each demo page's **Code**

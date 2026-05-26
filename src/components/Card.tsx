@@ -1,5 +1,5 @@
 import type { ReactNode, SVGProps } from "react";
-import { Frame, type ShapeGenerator } from "./Frame";
+import { Frame, type ShapeProp } from "./Frame";
 import { Text } from "./Text";
 import { tokens, type TextStyle } from "../tokens";
 
@@ -40,8 +40,12 @@ export type CardProps = Omit<
   SVGProps<SVGGElement>,
   "width" | "height" | "fill" | "stroke" | "strokeWidth" | "children"
 > & {
-  /** The card's outline. Any `ShapeGenerator`. */
-  shape: ShapeGenerator;
+  /** The card's outline. A `ShapeGenerator` (`(w,h) => string`), or a
+   *  `ShapeBundle` (`{ path, flowAround? }`) — when the bundle ships a
+   *  `flowAround`, Card's body slot uses it directly and skips contour
+   *  sampling, which is the only way to keep text wrap smooth on a
+   *  shape that's animated every frame. */
+  shape: ShapeProp;
   /** Card width, in layout units. Defaults to 340. */
   width?: number | "auto";
   /** Card height. Defaults to `"auto"` (shrink-wraps to header+body+actions). */

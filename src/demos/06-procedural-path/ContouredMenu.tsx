@@ -10,7 +10,7 @@ import {
 import { getFontMetrics } from "../../layout/measureText";
 import { tokens, type TextStyle } from "../../tokens";
 import { makeMenuShape } from "../../shapes";
-import { useTweenedNumbers } from "./useTweenedNumbers";
+import { useTweenedNumbers } from "../../layout/tween";
 
 /**
  * Version B — a path that contours a vertical menu of varying-width items.
@@ -120,7 +120,7 @@ export function ContouredMenu() {
   const targets = labelMetrics.map((_, i) =>
     i === active ? rowActive(i) : rowInactive(i),
   );
-  const widths = useTweenedNumbers(targets, TWEEN_MS);
+  const widths = useTweenedNumbers(targets, { durationMs: TWEEN_MS });
 
   const totalHeight = ITEMS.length * ITEM_HEIGHT;
   // Container width = the widest silhouette either mode can ever produce —

@@ -1,6 +1,7 @@
 import { wobbleEdge } from "./wobble";
 import { intrusionFromReach } from "../layout/intrusionSampling";
 import type { IntrusionFn } from "../layout/intrusionSampling";
+import type { FlowAround } from "../components/Text";
 
 /**
  * `scoopCard` — a card outline with a smooth concave scoop carved into its
@@ -41,11 +42,18 @@ export type ScoopCard = {
   /** SVG path data for the card outline at size (w, h). */
   path: (w: number, h: number) => string;
   /**
-   * The scoop's intrusion into a text column, ready to hand to a `Text`'s
-   * `flowAround`. `columnLeft`/`columnTop` give the column's top-left in card
-   * space; the returned profile takes coordinates relative to the text block.
+   * The scoop's intrusion into a text column. `columnLeft`/`columnTop` give
+   * the column's top-left in card space; the returned profile takes
+   * coordinates relative to the text block.
    */
   intrusionInto: (columnLeft: number, columnTop: number) => IntrusionFn;
+  /**
+   * Bundle form for `<Frame shape={...}>` / `<Card shape={...}>`. Returns a
+   * `FlowAround` whose `intrusionAt` is the same closed-form scoop profile —
+   * so Frame's shape-fit text slot uses it directly and skips contour
+   * sampling. This is what keeps text wrap smooth when the scoop is animated.
+   */
+  flowAround: (columnLeft: number, columnTop: number) => FlowAround;
 };
 
 export function scoopCard(opts: ScoopCardOptions): ScoopCard {
@@ -112,5 +120,14 @@ export function scoopCard(opts: ScoopCardOptions): ScoopCard {
       },
     );
 
-  return { path, intrusionInto };
+  // Bundle form — wraps `intrusionInto` in a `FlowAround` object so a Frame
+  // shape-fit slot can plug it in without any glue.
+  const flowAround = (
+    columnLeft: number,
+    columnTop: number,
+  ): FlowAround => ({
+    intrusionAt: intrusionInto(columnLeft, columnTop),
+  });
+
+  return { path, intrusionInto, flowAround };
 }

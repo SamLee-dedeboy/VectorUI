@@ -137,6 +137,35 @@ export type SlotSpec =
 /** A path generator: returns SVG path data for a (width, height) box. */
 export type ShapeGenerator = (width: number, height: number) => string;
 
+/**
+ * A parametric shape: a path PLUS an optional closed-form `flowAround` for a
+ * text column placed inside it. When provided, a Frame's shape-fit text slot
+ * uses this flowAround directly and skips per-frame contour sampling —
+ * turning animated text wrap from "O(path tokens × samples per band)" into
+ * "O(line-count × intrusion-query)". For non-parametric shapes (no closed
+ * form), drop the `flowAround` field and Frame falls back to sampling the
+ * rendered `d`.
+ *
+ * Arguments to `flowAround` are the text column's top-left in the SAME
+ * coordinate space the path is drawn in.
+ */
+export type ShapeBundle = {
+  path: ShapeGenerator;
+  flowAround?: (columnLeft: number, columnTop: number) => FlowAround;
+};
+
+/** Frame's `shape` prop accepts a plain generator OR a parametric bundle. */
+export type ShapeProp = ShapeGenerator | ShapeBundle;
+
+/** Normalize a `ShapeProp` to its path + optional flowAround halves. */
+function resolveShape(shape: ShapeProp): {
+  path: ShapeGenerator;
+  flowAround?: (columnLeft: number, columnTop: number) => FlowAround;
+} {
+  if (typeof shape === "function") return { path: shape };
+  return shape;
+}
+
 // --- Frame context --------------------------------------------------------
 
 type Size = { w: number; h: number };
@@ -170,8 +199,11 @@ export type FrameProps = Omit<
   SVGProps<SVGGElement>,
   "width" | "height" | "fill"
 > & {
-  /** Path generator for the Frame's outline. */
-  shape: ShapeGenerator;
+  /** Path generator for the Frame's outline. Pass a plain `(w,h) => string`
+   *  function, or a `ShapeBundle` (`{ path, flowAround? }`) — when the bundle
+   *  provides `flowAround`, shape-fit text slots use it directly and skip
+   *  contour sampling (the fast path for animated text wrap). */
+  shape: ShapeProp;
   /** Frame width in layout units, or "auto" to derive it from slot content
    *  (mirrors `height="auto"`: the Frame's width is the rightmost slot edge
    *  plus `padding`). */
@@ -386,8 +418,12 @@ function FrameInner({
     };
   }, [slots, measured, height, width, padding]);
 
+  // Normalize the shape to its (path, optional flowAround) halves. The path
+  // generates the rendered `d`; the flowAround — when provided — lets shape-
+  // fit text slots skip contour sampling.
+  const { path: shapePath, flowAround: shapeFlowAround } = resolveShape(shape);
   // The path is generated last, with the final (w, h).
-  const d = shape(frameWidth, frameHeight);
+  const d = shapePath(frameWidth, frameHeight);
 
   // Shape-fit refinement: for each shape-fit slot, sample the path (or the
   // slot's override shape) to either (a) publish a per-band flowAround so a
@@ -408,6 +444,56 @@ function FrameInner({
       // (Frame coords). For frame coords, we translate queries by the slot's
       // (tx, ty) to map slot-local <-> path-coord.
       const overrideShape = slot.shape;
+
+      // Fast path: a parametric Frame shape that bundles `flowAround` can
+      // answer the wrap query in closed form, so we skip path-walker
+      // construction entirely. Applies to both text-mode and safe-mode
+      // slots against the Frame's own shape (override-shape slots still go
+      // through sampling — their bundle, if any, lives in slot-local coords
+      // we don't yet thread through).
+      if (!overrideShape && shapeFlowAround) {
+        const flow = shapeFlowAround(placement.tx, placement.ty);
+        if (mode === "text") {
+          flowArounds[name] = pad ? { ...flow, gap: flow.gap ?? pad } : flow;
+          continue;
+        }
+        // mode === "safe": derive an inscribed rect by querying the
+        // flowAround at a few y positions across the slot's height.
+        const slotH = slotHeights[name] ?? 0;
+        const queryL = flow.intrusionAt;
+        const queryR = flow.rightIntrusionAt;
+        if (queryL || queryR) {
+          const samples = Math.max(2, Math.ceil(slotH / 4));
+          let maxLeft = 0;
+          let maxRight = 0;
+          for (let i = 0; i <= samples; i++) {
+            const yLocal = slotH === 0 ? 0 : (slotH * i) / samples;
+            if (queryL) {
+              const l = queryL(yLocal, yLocal + 1);
+              if (l > maxLeft) maxLeft = l;
+            }
+            if (queryR) {
+              const r = queryR(yLocal, yLocal + 1);
+              if (r > maxRight) maxRight = r;
+            }
+          }
+          const left = Math.max(0, maxLeft + pad);
+          const right = Math.min(
+            placement.slotWidth,
+            placement.slotWidth - maxRight - pad,
+          );
+          if (right - left >= 1) {
+            refined[name] = {
+              ...placement,
+              tx: placement.tx + left,
+              slotWidth: right - left,
+            };
+          }
+          continue;
+        }
+        // No intrusion queries on this bundle — fall through to sampling.
+      }
+
       const pathD = overrideShape
         ? overrideShape(placement.slotWidth, slotHeights[name] ?? 0)
         : d;
@@ -503,7 +589,7 @@ function FrameInner({
       placements: { ...nominal, ...refined },
       slotFlowArounds: flowArounds,
     };
-  }, [d, nominal, slotHeights, slots]);
+  }, [d, nominal, slotHeights, slots, shapeFlowAround]);
 
   useEffect(() => {
     onLayout?.({ width: frameWidth, height: frameHeight });

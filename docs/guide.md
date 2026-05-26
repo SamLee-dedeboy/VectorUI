@@ -487,9 +487,19 @@ All from `"vectorui"`. Hooks must be used under a `VectorUIRoot`.
 | `useNaturalTextWidth(text, font)` | `number` (layout units) | Sizing a shape to a label. |
 | `useFontsReady()` | `boolean` | Re-measure when the web font loads. |
 | `usePrefersReducedMotion()` | `boolean` | Drop animations to instant. |
+| `useTween(target, opts?)` | `number` | RAF-driven scalar tween. See §12 Animation. |
+| `useTweenedNumbers(targets, opts?)` | `number[]` | Per-index tween with optional `staggerMs`. |
+| `useTweenedPoints(target, opts?)` | `CurvePoint[]` | Tween a vertex array; feed `polyline()` to PathFlow. |
+| `useTweenedPath(target, opts?)` | `string` | Tween an SVG `d`; feed `Card`/`Frame`/`Path`. |
+| `useStaggeredReveal(count, open, opts?)` | `number[]` | Sugar: `[0,…]` → `[1,…]` with stagger (Demo 3A's reveal). |
 | `useMeasuredBounds(onBounds)` | a `ref` | Measure one element's rendered `getBBox`. |
 | `useChildBounds()` | `{ bounds, Measured }` | Measure N children (the core of `Flow`/`PathFlow`). |
 | `useFitToContent()` | `{ ref, size }` | Size a container to its content. |
+
+`TweenOptions = { durationMs?, easing? }`; `StaggeredTweenOptions` adds
+`staggerMs?`. The five named easings — `linear`, `easeIn`, `easeOut`,
+`easeInOut` (default), `smoothstep` — are all `Easing = (t: number) => number`
+on `[0, 1]` → `[0, 1]`. Pass your own function for anything custom.
 
 Curves for `PathFlow`: `arc({cx,cy,radius,startAngle,endAngle})`,
 `line({x1,y1,x2,y2})`, `quadratic({p0,control,p1})`. Path morphing:
@@ -639,10 +649,56 @@ a left-leaning rect populates `intrusionAt`, a right-leaning one
 
 ### Animation
 
-There is no animation primitive yet. The demos drive animation with plain
-React state + `requestAnimationFrame`, gated by `usePrefersReducedMotion()`,
-and feed a `0…1` value into a `tokens.shapes.*` generator's `morph` argument or
-into `morphPath`.
+VectorUI has no animation API. Its primitives recompute from props each
+render, so **animating reduces to driving a prop over time** and letting
+React re-render. The library ships five RAF hooks to turn that pattern into
+one line. All honor `usePrefersReducedMotion()` (snap to target, no easing,
+no RAF). See Demo 9 for the three flavors side by side.
+
+**Flavor A — animate a child's transform** (`useTween`, scalar):
+
+```tsx
+const [hovered, setHovered] = useState(false);
+const scale = useTween(hovered ? 1.18 : 1);
+return (
+  <g transform={`scale(${scale})`}>
+    <VectorButton shape={hex} onHoverChange={setHovered}>…</VectorButton>
+  </g>
+);
+```
+
+**Flavor B — animate a layout input** (`useTweenedPoints`, vertex array):
+
+```tsx
+// Both endpoints pre-resampled to the same vertex count.
+const targetPts = bent ? ARC_POINTS : LINE_POINTS;
+const points = useTweenedPoints(targetPts, { durationMs: 480 });
+const curve = useMemo(() => polyline({ points }), [points]);
+return <PathFlow curve={curve}>{children}</PathFlow>;
+```
+
+**Flavor C — animate a primitive's `shape`** (`useTweenedPath`, `d` string):
+
+```tsx
+// Both ds must tokenize identically — use the same generator on each side.
+const d = useTweenedPath(deep ? DEEP_D : SHALLOW_D, { durationMs: 420 });
+return <Card shape={() => d} width={CARD_W} height={CARD_H} body="…" />;
+```
+
+`useTweenedNumbers(targets, { staggerMs })` covers per-index arrays;
+`useStaggeredReveal(count, open)` is sugar over it for Demo-3-style reveals.
+
+**Easings.** All hooks accept an `easing` prop on `TweenOptions`. The five
+named ones — `linear`, `easeIn`, `easeOut`, `easeInOut` (default),
+`smoothstep` — are plain `(t: number) => number` functions; pass any
+function you like. `tokens.motion.duration.*` provide the standard
+durations for Layer-3 callers.
+
+**When NOT to reach for these hooks.** For *viewport-driven* shape morphs
+(the breakpoint case in Demo 4), use `breakpointMorph(width, threshold,
+band)` + `morphPath(from, to, t)` — the viewport is the clock, no RAF
+needed. For one-shot interpolation outside a render loop, `morphPath` and
+`lerpPoints` work as pure functions.
 
 ---
 
@@ -662,8 +718,6 @@ Honest list — useful when assessing the API:
   cut. Keep a little padding around shadowed shapes.
 - **`Text` takes a plain string only.** No inline spans, bold runs, or links
   within a paragraph. Mixed formatting means multiple `<Text>` elements.
-- **No animation primitive.** No `useTween` / transition component is exported;
-  apps roll their own (see [Animation](#12-recipes)).
 - **Edit mode v1 is parameterised-only.** `DesignSurface` and the
   `useEditHandle` protocol expose draggable control points for components
   that opt in (`CurveSlider.editablePoints`, `Frame.onSlotEdit`). Editing an

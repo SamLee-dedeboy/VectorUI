@@ -4,6 +4,7 @@ import { Text } from "../../components/Text";
 import { useViewportWidth } from "../../layout/breakpoints";
 import { usePrefersReducedMotion } from "../../layout/motion";
 import { morphPath } from "../../layout/morphPath";
+import { smoothstep } from "../../layout/easings";
 import { tokens } from "../../tokens";
 
 /**
@@ -21,7 +22,6 @@ import { tokens } from "../../tokens";
  * Must be rendered under a `VectorUIRoot` (reads `useViewportWidth`).
  */
 
-const smoothstep = (t: number) => t * t * (3 - 2 * t);
 const clamp01 = (n: number) => Math.max(0, Math.min(1, n));
 
 export type MorphStop = {

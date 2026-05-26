@@ -4,16 +4,19 @@ import { PathFlow } from "../../components/PathFlow";
 import { VectorButton } from "../../components/VectorButton";
 import { Circle } from "../../svg/Circle";
 import { arc, type Curve } from "../../layout/walkPath";
+import {
+  useStaggeredReveal,
+  useTweenedPoints,
+} from "../../layout/tween";
 import { tokens } from "../../tokens";
 import { Icon, type IconName } from "./Icon";
 import { hexagon, cog } from "./chrome";
 import {
   curveFromPoints,
+  curvePoints,
   type CurveKind,
   type CurveScene,
 } from "./curves";
-import { useMorphedCurve } from "./useMorphedCurve";
-import { useStaggeredReveal } from "./useStaggeredReveal";
 
 /**
  * Demo 3 — `PathFlow` + `VectorButton`: a curve-as-layout core component, and
@@ -101,7 +104,15 @@ export function Demo() {
     }),
     [],
   );
-  const pointsB = useMorphedCurve(curveB, sceneB, 360);
+  // The (kind, scene) → vertex-array mapping is Demo-3 vocabulary; the
+  // library only ships `useTweenedPoints`. We memoize the target points and
+  // hand them to the tween hook — it returns the interpolated vertices each
+  // frame, and `curveFromPoints` wraps them as a `Curve` for `PathFlow`.
+  const targetPointsB = useMemo(
+    () => curvePoints(curveB, sceneB),
+    [curveB, sceneB],
+  );
+  const pointsB = useTweenedPoints(targetPointsB, { durationMs: 360 });
   const curveBPath = useMemo(() => curveFromPoints(pointsB), [pointsB]);
 
   return (

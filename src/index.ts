@@ -27,6 +27,8 @@ export type {
   SlotAfter,
   AnchorAlign,
   ShapeGenerator,
+  ShapeBundle,
+  ShapeProp,
 } from "./components/Frame";
 export { Card } from "./components/Card";
 export type { CardProps } from "./components/Card";
@@ -197,6 +199,22 @@ export type {
   FitSize,
 } from "./layout/childBounds";
 export { usePrefersReducedMotion } from "./layout/motion";
+export {
+  useTween,
+  useTweenedNumbers,
+  useTweenedPoints,
+  useTweenedPath,
+  useStaggeredReveal,
+} from "./layout/tween";
+export type { TweenOptions, StaggeredTweenOptions } from "./layout/tween";
+export {
+  linear,
+  easeIn,
+  easeOut,
+  easeInOut,
+  smoothstep,
+} from "./layout/easings";
+export type { Easing } from "./layout/easings";
 export {
   EditModeContext,
   useEditMode,

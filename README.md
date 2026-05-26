@@ -98,6 +98,13 @@ geometry as the live UI.
 - **Demos 7 & 8** are the worked examples — `#/07-curve-slider` (runtime),
   `#/08-design-surface` (edit). See [guide.md §14](./docs/guide.md) for the
   protocol and authoring notes.
+- **Animation kit** (`useTween`, `useTweenedNumbers`, `useTweenedPoints`,
+  `useTweenedPath`, `useStaggeredReveal` + `easings`) names the pattern the
+  demos had already been using — drive a prop over time, let the library
+  re-render. **Demo 9** shows the three flavors side by side (animate a
+  child transform, a layout input, a primitive's `shape` prop). Four
+  demo-local RAF hooks consolidated into one Layer-2 module. See
+  [guide.md §12 Animation](./docs/guide.md).
 
 Deliberately out of scope this phase: editing arbitrary `<path d="…">`
 strings, round-tripping edits to source, multi-select / snap / undo, and an

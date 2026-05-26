@@ -10,6 +10,7 @@ import { Demo as LayoutPlaygroundDemo } from "./05-layout-playground/demo";
 import { Demo as ProceduralPathDemo } from "./06-procedural-path/demo";
 import { Demo as CurveSliderDemo } from "./07-curve-slider/demo";
 import { Demo as DesignSurfaceDemo } from "./08-design-surface/demo";
+import { Demo as AnimationDemo } from "./09-animation/demo";
 import { Demo as PlaygroundDemo } from "../playground/demo";
 
 // Demo source, imported verbatim via Vite's `?raw` so each demo page can show
@@ -30,8 +31,6 @@ import vectorButtonSrc from "../components/VectorButton.tsx?raw";
 import radialChromeSrc from "./03-radial-menu/chrome.ts?raw";
 import iconSrc from "./03-radial-menu/Icon.tsx?raw";
 import radialCurvesSrc from "./03-radial-menu/curves.ts?raw";
-import radialMorphedCurveSrc from "./03-radial-menu/useMorphedCurve.ts?raw";
-import radialStaggeredRevealSrc from "./03-radial-menu/useStaggeredReveal.ts?raw";
 import breakpointMorphDemoSrc from "./04-breakpoint-morph/demo.tsx?raw";
 import morphCardSrc from "./04-breakpoint-morph/MorphCard.tsx?raw";
 import morphShapesSrc from "./04-breakpoint-morph/shapes.ts?raw";
@@ -48,9 +47,15 @@ import proceduralControlsSrc from "./06-procedural-path/Controls.tsx?raw";
 import proceduralStateSrc from "./06-procedural-path/state.ts?raw";
 import contouredMenuSrc from "./06-procedural-path/ContouredMenu.tsx?raw";
 import menuShapeSrc from "../shapes/menuShape.ts?raw";
-import useTweenedNumbersSrc from "./06-procedural-path/useTweenedNumbers.ts?raw";
 import curveSliderDemoSrc from "./07-curve-slider/demo.tsx?raw";
 import designSurfaceDemoSrc from "./08-design-surface/demo.tsx?raw";
+import animationDemoSrc from "./09-animation/demo.tsx?raw";
+import animationTransformSrc from "./09-animation/scenes/TransformScene.tsx?raw";
+import animationLayoutSrc from "./09-animation/scenes/LayoutInputScene.tsx?raw";
+import animationShapeSrc from "./09-animation/scenes/ShapePropScene.tsx?raw";
+import frameSrc from "../components/Frame.tsx?raw";
+import tweenSrc from "../layout/tween.ts?raw";
+import easingsSrc from "../layout/easings.ts?raw";
 
 /** One source file shown in a demo's Code tab. */
 export type SourceFile = { name: string; code: string };
@@ -112,8 +117,8 @@ export const DEMOS: DemoEntry[] = [
       { name: "PathFlow.tsx", code: pathFlowSrc },
       { name: "VectorButton.tsx", code: vectorButtonSrc },
       { name: "curves.ts", code: radialCurvesSrc },
-      { name: "useMorphedCurve.ts", code: radialMorphedCurveSrc },
-      { name: "useStaggeredReveal.ts", code: radialStaggeredRevealSrc },
+      { name: "tween.ts", code: tweenSrc },
+      { name: "easings.ts", code: easingsSrc },
       { name: "chrome.ts", code: radialChromeSrc },
       { name: "Icon.tsx", code: iconSrc },
     ],
@@ -162,7 +167,7 @@ export const DEMOS: DemoEntry[] = [
       { name: "proceduralShape.ts", code: proceduralShapeSrc },
       { name: "ContouredMenu.tsx", code: contouredMenuSrc },
       { name: "menuShape.ts", code: menuShapeSrc },
-      { name: "useTweenedNumbers.ts", code: useTweenedNumbersSrc },
+      { name: "tween.ts", code: tweenSrc },
       { name: "Controls.tsx", code: proceduralControlsSrc },
       { name: "state.ts", code: proceduralStateSrc },
     ],
@@ -186,6 +191,32 @@ export const DEMOS: DemoEntry[] = [
       "Phase 3 — direct-manipulation authoring. useEditHandle protocol; DesignSurface aggregation; per-component edit-mode sugar; constraint-respecting drags.",
     Component: DesignSurfaceDemo,
     sources: [{ name: "demo.tsx", code: designSurfaceDemoSrc }],
+  },
+  {
+    id: "09-animation",
+    title: "9 · Animation — drive a prop over time",
+    blurb:
+      "Three sub-scenes, one recipe. A child's transform, a layout input, and a shape prop — all animated by the same five-hook kit (useTween, useTweenedNumbers, useTweenedPoints, useTweenedPath, useStaggeredReveal).",
+    proves:
+      "Animation as a render-time concern: VectorUI primitives are pure functions of props, so animating reduces to driving a prop over time. No animation API, no DOM mutation — just RAF-driven hooks at Layer 2.",
+    Component: AnimationDemo,
+    sources: [
+      { name: "demo.tsx", code: animationDemoSrc },
+      { name: "scenes/TransformScene.tsx", code: animationTransformSrc },
+      { name: "scenes/LayoutInputScene.tsx", code: animationLayoutSrc },
+      { name: "scenes/ShapePropScene.tsx", code: animationShapeSrc },
+      { name: "tween.ts", code: tweenSrc },
+      { name: "easings.ts", code: easingsSrc },
+      // Scene B layers on PathFlow; the curve-as-layout primitive is the
+      // thing being driven each frame by useTweenedPoints.
+      { name: "PathFlow.tsx", code: pathFlowSrc },
+      // Scene C composes Card + scoopCard; Card threads the ShapeProp through
+      // to Frame, and Frame's shape-fit fast path is what turns the morph
+      // from O(path × bands) sampling into O(line) closed-form queries.
+      { name: "Card.tsx", code: cardSrc },
+      { name: "Frame.tsx", code: frameSrc },
+      { name: "scoopCard.ts", code: scoopCardSrc },
+    ],
   },
   {
     id: "playground",
