@@ -38,6 +38,8 @@ export { Flow } from "./components/Flow";
 export type { FlowProps, FlowDirection, FlowAlign } from "./components/Flow";
 export { Pill } from "./components/Pill";
 export type { PillProps } from "./components/Pill";
+export { VectorButton } from "./components/VectorButton";
+export type { VectorButtonProps } from "./components/VectorButton";
 export { WrapText } from "./components/WrapText";
 export type { WrapTextProps } from "./components/WrapText";
 export { Float, isFloatElement } from "./components/Float";

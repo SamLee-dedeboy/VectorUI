@@ -25,9 +25,13 @@ import triangleFloatSrc from "../shapes/triangleFloat.ts?raw";
 import wobbleSrc from "../shapes/wobble.ts?raw";
 import buttonSrc from "./02-card/Button.tsx?raw";
 import radialMenuDemoSrc from "./03-radial-menu/demo.tsx?raw";
-import radialMenuSrc from "./03-radial-menu/RadialMenu.tsx?raw";
+import pathFlowSrc from "../components/PathFlow.tsx?raw";
+import vectorButtonSrc from "../components/VectorButton.tsx?raw";
 import radialChromeSrc from "./03-radial-menu/chrome.ts?raw";
 import iconSrc from "./03-radial-menu/Icon.tsx?raw";
+import radialCurvesSrc from "./03-radial-menu/curves.ts?raw";
+import radialMorphedCurveSrc from "./03-radial-menu/useMorphedCurve.ts?raw";
+import radialStaggeredRevealSrc from "./03-radial-menu/useStaggeredReveal.ts?raw";
 import breakpointMorphDemoSrc from "./04-breakpoint-morph/demo.tsx?raw";
 import morphCardSrc from "./04-breakpoint-morph/MorphCard.tsx?raw";
 import morphShapesSrc from "./04-breakpoint-morph/shapes.ts?raw";
@@ -97,14 +101,19 @@ export const DEMOS: DemoEntry[] = [
   },
   {
     id: "03-radial-menu",
-    title: "3 · Radial menu",
+    title: "3 · PathFlow + VectorButton — curve-as-layout meets path-as-button",
     blurb:
-      "Hexagonal items distributed along an arc around a cog hub, rotated to the tangent.",
-    proves: "Step 7: PathFlow, arc-length distribution, tangent rotation.",
+      "Two menus built from two library core components: PathFlow distributes its children along any Curve; each child is a VectorButton whose shape prop is the click target. Version A passes an arc + cog-shaped VectorButton hub; Version B passes a morphed polyline interpolating between sine, square, and straight.",
+    proves:
+      "PathFlow as a reusable core component (curve-as-prop, arc-length distribution, tangent rotation) plus VectorButton (shape-as-prop button with click / hover / keyboard wired up). The curve and the shapes are the only things that change between the two faces of the demo.",
     Component: RadialMenuDemo,
     sources: [
       { name: "demo.tsx", code: radialMenuDemoSrc },
-      { name: "RadialMenu.tsx", code: radialMenuSrc },
+      { name: "PathFlow.tsx", code: pathFlowSrc },
+      { name: "VectorButton.tsx", code: vectorButtonSrc },
+      { name: "curves.ts", code: radialCurvesSrc },
+      { name: "useMorphedCurve.ts", code: radialMorphedCurveSrc },
+      { name: "useStaggeredReveal.ts", code: radialStaggeredRevealSrc },
       { name: "chrome.ts", code: radialChromeSrc },
       { name: "Icon.tsx", code: iconSrc },
     ],
