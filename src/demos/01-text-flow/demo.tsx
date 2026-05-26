@@ -1,6 +1,5 @@
 import { useMemo } from "react";
 import { VectorUIRoot } from "../../components/VectorUIRoot";
-import { Flow } from "../../components/Flow";
 import { WrapText } from "../../components/WrapText";
 import { Float } from "../../components/Float";
 import { tokens } from "../../tokens";
@@ -51,34 +50,31 @@ export function Demo() {
           maxWidth: WIDE,
           border: `1px solid ${tokens.color.line}`,
           background: tokens.color.surface,
+          padding: PAD,
         }}
       >
-        <Flow padding={PAD}>
           <WrapText
             {...tokens.type.body}
-            lineHeight={26}
             gap={24}
             fill={tokens.color.ink}
           >
             <Float d={blobA.path} fill={tokens.color.accentSoft} />
             {BODY_A}
           </WrapText>
-        </Flow>
       </VectorUIRoot>
 
       <p className="variant-label">
         Version B — text poured through a hand-drawn archway, wrapped both sides
       </p>
       <VectorUIRoot
-        width={ARCH_W}
         height="content"
         style={{
           maxWidth: ARCH_W,
           border: `1px solid ${tokens.color.line}`,
           background: "#fdf6ef",
+          padding: PAD,
         }}
       >
-        <Flow padding={PAD}>
           <WrapText
             {...tokens.type.body}
             lineHeight={26}
@@ -88,7 +84,6 @@ export function Demo() {
             <Float d={arch.path} fill="#ecd3b8" samples={1024} />
             {BODY_B}
           </WrapText>
-        </Flow>
       </VectorUIRoot>
     </div>
   );

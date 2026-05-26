@@ -55,6 +55,13 @@ export type VectorUIRootProps = Omit<
    *  Defaults to `"content"` — the height tracks the rendered content, so a
    *  scene needs no guessed fallback height. Pass a number for a fixed height. */
   height?: number | "content";
+  /** Inner padding around children, in layout units. Wraps the subtree in a
+   *  `translate(p, p)` group and grows the `height="content"` fit by `2p`, so
+   *  the bottom padding shows too. This is the "framed root" shortcut for
+   *  simple scenes — no `<Flow padding=…>` wrapper needed. Note: it does NOT
+   *  center children on the cross-axis. For multi-child centering /
+   *  distribution, use `<Flow>` (which still also does padding). */
+  padding?: number;
   children?: ReactNode;
   style?: CSSProperties;
 };
@@ -62,6 +69,7 @@ export type VectorUIRootProps = Omit<
 export function VectorUIRoot({
   width = "auto",
   height = "content",
+  padding = 0,
   children,
   style,
   ...svgProps
@@ -92,10 +100,13 @@ export function VectorUIRoot({
   const scale = isAuto ? 1 : measured ? pixelWidth / width : 1;
 
   // When height is "content", the viewBox height tracks the rendered content.
+  // With `padding` set we wrap the subtree in a `translate(p, p)` group, so
+  // `fit.size.height` already counts the TOP padding (the bbox y starts at p);
+  // we add another `padding` here for the bottom padding.
   const isContentHeight = height === "content";
   const fit = useFitToContent();
   const viewBoxHeight = isContentHeight
-    ? Math.max(fit.size?.height ?? 1, 1)
+    ? Math.max((fit.size?.height ?? 1) + padding, 1)
     : height;
 
   const value = useMemo<CoordinateScale>(
@@ -122,8 +133,22 @@ export function VectorUIRoot({
         {/* Token <filter> presets, declared once so tokens.filters.* resolve. */}
         <TokenDefs />
         {/* Until the ResizeObserver reports a width, scale is a placeholder 1;
-            text measurement waits on `pixelWidth > 0` via the components. */}
-        {isContentHeight ? <g ref={fit.ref}>{children}</g> : children}
+            text measurement waits on `pixelWidth > 0` via the components.
+            `padding`, when set, insets the subtree by `p` on the top-left so
+            content's local (0, 0) ends up at (p, p) inside the viewBox. */}
+        {isContentHeight ? (
+          <g ref={fit.ref}>
+            {padding > 0 ? (
+              <g transform={`translate(${padding} ${padding})`}>{children}</g>
+            ) : (
+              children
+            )}
+          </g>
+        ) : padding > 0 ? (
+          <g transform={`translate(${padding} ${padding})`}>{children}</g>
+        ) : (
+          children
+        )}
       </svg>
     </CoordinateScaleContext.Provider>
   );

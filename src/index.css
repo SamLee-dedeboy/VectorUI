@@ -56,6 +56,19 @@ code {
   color: var(--muted);
   font-size: 14px;
 }
+.app-nav {
+  margin-left: auto;
+  display: flex;
+  gap: 18px;
+  font-size: 14px;
+}
+.app-nav a {
+  color: var(--ink);
+  font-weight: 500;
+}
+.app-nav a:hover {
+  color: var(--accent);
+}
 
 .app-main {
   max-width: 980px;
@@ -488,5 +501,129 @@ h2 {
   margin: 28px 0 8px;
 }
 .variant-label code {
+  font-weight: 600;
+}
+
+/* ── Docs viewer ────────────────────────────────────────────────────── */
+.docs-article {
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--ink);
+}
+.docs-header {
+  margin: 8px 0 24px;
+}
+.docs-header h1 {
+  margin: 8px 0 6px;
+}
+.docs-source {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+.docs-source code {
+  background: transparent;
+  padding: 0;
+  font-size: 13px;
+}
+.docs-body h1 {
+  font-size: 26px;
+  margin: 36px 0 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--line);
+}
+.docs-body h2 {
+  font-size: 20px;
+  margin: 32px 0 10px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--line);
+}
+.docs-body h3 {
+  font-size: 16px;
+  margin: 24px 0 8px;
+  font-weight: 600;
+}
+.docs-body h4 {
+  font-size: 14px;
+  margin: 20px 0 6px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.docs-body p {
+  margin: 0 0 14px;
+}
+.docs-body a {
+  color: var(--accent);
+}
+.docs-body a:hover {
+  text-decoration: underline;
+}
+.docs-body ul,
+.docs-body ol {
+  margin: 0 0 14px;
+  padding-left: 24px;
+}
+.docs-body li {
+  margin: 4px 0;
+}
+.docs-body code {
+  background: #f4f3ee;
+  padding: 1.5px 5px;
+  border-radius: 4px;
+  font-size: 0.92em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.docs-body pre {
+  background: #1f2422;
+  color: #e6e8e3;
+  padding: 14px 18px;
+  border-radius: 8px;
+  overflow-x: auto;
+  font-size: 13px;
+  line-height: 1.55;
+  margin: 0 0 16px;
+}
+.docs-body pre code {
+  background: transparent;
+  padding: 0;
+  color: inherit;
+  font-size: inherit;
+}
+.docs-body blockquote {
+  margin: 0 0 14px;
+  padding: 6px 14px;
+  border-left: 3px solid var(--accent);
+  background: #f7f9f6;
+  color: var(--ink);
+  border-radius: 0 6px 6px 0;
+}
+.docs-body blockquote p:last-child {
+  margin-bottom: 0;
+}
+.docs-body table {
+  border-collapse: collapse;
+  margin: 0 0 16px;
+  font-size: 13.5px;
+  display: block;
+  overflow-x: auto;
+  max-width: 100%;
+}
+.docs-body th,
+.docs-body td {
+  border: 1px solid var(--line);
+  padding: 6px 10px;
+  text-align: left;
+  vertical-align: top;
+}
+.docs-body th {
+  background: #f4f3ee;
+  font-weight: 600;
+}
+.docs-body hr {
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin: 28px 0;
+}
+.docs-body strong {
   font-weight: 600;
 }

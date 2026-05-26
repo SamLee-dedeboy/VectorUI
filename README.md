@@ -36,8 +36,10 @@ were passed, and all five §11 demos are live.
 
 ### Post-spec refinements
 
-- **Demo 3** animates between the arc and the line — the curve is a quadratic
-  Bézier whose control points are tweened, so items slide and rotate smoothly.
+- **Demo 3** was later rewritten to lead with two library cores: `<PathFlow>`
+  (curve as layout) and `<VectorButton>` (path as button). Version A passes an
+  `arc()` curve plus a cog-shaped `VectorButton` hub; Version B passes a
+  morphed polyline that interpolates between sine, square, and straight.
 - **Demo 5** is interactive: HTML controls drive a single composed scene so
   the user can see the layout system respond to inputs in real time (container
   width, child count, distribute strategy, body length, footer count, inspect
@@ -87,6 +89,13 @@ geometry as the live UI.
   nearest point on the curve via the new `nearestPointOnCurve` /
   `pointAt` Layer-2 exports. Keyboard, focus-as-path, `role="slider"`
   a11y, and reduced-motion all built in.
+- **`VectorButton`** — a path-as-button core. Pass any `shape` (hexagon,
+  cog, leaf, hand-drawn blob — anything that fits in a `d` string) and the
+  outline IS the hit target and the visual surface in one. Children render
+  on top so icons / labels ride the shape. Click, hover, keyboard
+  activation (Enter/Space), focus, and `data-hovered` are wired up once;
+  consumers only supply callbacks. Demo 3 uses it for both the menu chips
+  and the cog hub.
 - **`<DesignSurface>` + `useEditHandle`** — a small protocol for direct
   manipulation. Components declare *which* points are draggable
   (`CurveSlider.editablePoints`, `Frame.onSlotEdit`); a surrounding
@@ -103,7 +112,15 @@ geometry as the live UI.
   demos had already been using — drive a prop over time, let the library
   re-render. **Demo 9** shows the three flavors side by side (animate a
   child transform, a layout input, a primitive's `shape` prop). Four
-  demo-local RAF hooks consolidated into one Layer-2 module. See
+  demo-local RAF hooks consolidated into one Layer-2 module.
+- **`ShapeBundle` + `ShapeProp`** — a small contract upgrade for
+  `Card.shape` / `Frame.shape`. A bundle is `{ path, flowAround? }`; when
+  the optional `flowAround` is provided, shape-fit text slots consume the
+  closed-form intrusion directly and skip per-frame contour sampling. The
+  practical unlock: animated text wrap on a morphing card runs at 60 fps
+  instead of crawling through path-walks per band per frame.
+  `scoopCard(...)` now returns a bundle; pass it straight to `<Card
+  shape={scoopCard(...)}>`. See
   [guide.md §12 Animation](./docs/guide.md).
 
 Deliberately out of scope this phase: editing arbitrary `<path d="…">`
@@ -135,7 +152,7 @@ Three layers (SPEC §4), strictly bottom-up — Layer 1 and 2 never import token
 |------|------|------|
 | 1 — render primitives | `src/svg/` | Thin SVG wrappers: `Group`, `Path`, `TextLine`. |
 | 2 — layout engine | `src/layout/` | Pure functions + hooks: coordinate scale, pretext text measurement, flow-around, arc-length curves, path morphing, breakpoints, rendered-bounds measurement, flow placement. |
-| 3 — components | `src/components/` | `VectorUIRoot`, `Text`, `Frame`, `PathFlow`, `Flow`, `Pill`, `TokenDefs`. |
+| 3 — components | `src/components/` | `VectorUIRoot`, `Text`, `Frame`, `Card`, `PathFlow`, `Flow`, `Pill`, `VectorButton`, `CurveSlider`, `DesignSurface`, `TokenDefs`. |
 | tokens | `src/tokens/` | Design tokens — consumed at Layer 3 only. |
 
 Demos live in `src/demos/` (see [its README](src/demos/README.md)), one route

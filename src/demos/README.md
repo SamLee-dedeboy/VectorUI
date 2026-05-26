@@ -8,7 +8,7 @@ one route each via the hash router.
 |-------|------|--------|
 | `#/01-text-flow` | **1 · Text flow around a shape** | pretext flow-around; variable-width per-line layout. |
 | `#/02-card` | **2 · Non-rectangular card** | `Frame`, the slot system, path-as-container, shrink-wrap. |
-| `#/03-radial-menu` | **3 · Radial menu** | `PathFlow`, arc-length distribution, tangent rotation. |
+| `#/03-radial-menu` | **3 · Radial menu** | Two library cores composed: `PathFlow` (curve as layout) + `VectorButton` (path as button); arc-length distribution, tangent rotation, staggered fan-out. |
 | `#/04-breakpoint-morph` | **4 · Breakpoint shape-morph** | Breakpoint system, path morphing, ResizeObserver wiring. |
 | `#/05-layout-playground` | **5 · Layout playground** | Every primitive composed live; container queries; Frame shrink-wrap; PathFlow distribute strategies; dynamic Flow. |
 | `#/06-procedural-path` | **6 · Procedural path with live reflow** | One closed-form function feeding both `ShapeGenerator` and `Text`'s `intrusionAt` — slider input morphs the silhouette and reflows the paragraph on one frame. |
@@ -27,8 +27,10 @@ Each demo folder separates the **reusable component** from the **demo page**:
 
 - `demo.tsx` — the page: controls, description, the `VectorUIRoot`, and the
   hard-coded arguments. The hash router renders this.
-- `<Component>.tsx` — the reusable component (`Card`, `RadialMenu`,
-  `MorphCard`, `Playground`, …), parameterized entirely by props.
+- `<Component>.tsx` — the reusable component (`Card`, `MorphCard`,
+  `Playground`, …), parameterized entirely by props. Some demos (e.g.
+  Demo 3) compose two library cores directly in `demo.tsx` with no
+  in-folder wrapper.
 - helpers (`Button.tsx`, `Icon.tsx`, `cornerBlob.ts`, …). Animation hooks
   now live in the library (`src/layout/tween.ts`) — demos consume them.
 

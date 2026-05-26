@@ -75,7 +75,7 @@ const arcCurve: Curve = arc({
 // ---- Version B sizing. -------------------------------------------------------
 
 const WIDTH_B = 540;
-const HEIGHT_B = 240;
+const HEIGHT_B = 120;
 
 const HEX_CHIP = hexagon(27);
 const COG_HUB = cog(34);
@@ -142,9 +142,7 @@ export function Demo() {
         cog-shaped <code>{"<VectorButton>"}</code> toggle
       </p>
       <VectorUIRoot
-        width={WIDTH_A}
-        height={HEIGHT_A}
-        style={{ maxWidth: WIDTH_A, background: "#f4f3ee" }}
+        style={{ maxWidth: WIDTH_A, background: "#f4f3ee", padding: 12 }}
       >
         {/* The arc itself, drawn faintly as a guide — fades in with the reveal. */}
         <path
@@ -248,9 +246,7 @@ export function Demo() {
         })}
       </div>
       <VectorUIRoot
-        width={WIDTH_B}
-        height={HEIGHT_B}
-        style={{ maxWidth: WIDTH_B, background: "#f1eefb" }}
+        style={{ maxWidth: WIDTH_B, background: "#f1eefb", padding: 12}}
       >
         {/* The morphed curve, drawn so the layout path is unmistakable. */}
         <path

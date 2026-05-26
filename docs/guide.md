@@ -5,7 +5,7 @@ SVG**. A page is one `<svg>` document; closed paths — not `<div>` boxes — ar
 the layout containers. This guide is the reference for building UI with it.
 
 > Status: feasibility prototype. The API is small and stable enough to build
-> with, but it is not production-hardened. See [Limitations](#13-limitations--rough-edges).
+> with, but it is not production-hardened. See [Limitations](#15-limitations--rough-edges).
 
 ## Contents
 
@@ -20,10 +20,12 @@ the layout containers. This guide is the reference for building UI with it.
 9. [`Pill` and the Layer-1 primitives](#9-pill-and-the-layer-1-primitives)
 10. [Design tokens](#10-design-tokens)
 11. [Hooks & layout utilities](#11-hooks--layout-utilities)
-12. [Recipes](#12-recipes)
-13. [Limitations & rough edges](#13-limitations--rough-edges)
-14. [Edit mode (`CurveSlider`, `DesignSurface`)](#14-edit-mode-curveslider-designsurface)
-15. [Build & test](#15-build--test)
+12. [Animation — drive a prop over time](#12-animation--drive-a-prop-over-time)
+13. [`ShapeBundle` — shape-aware text wrap](#13-shapebundle--shape-aware-text-wrap)
+14. [Recipes](#14-recipes)
+15. [Limitations & rough edges](#15-limitations--rough-edges)
+16. [Edit mode (`CurveSlider`, `DesignSurface`)](#16-edit-mode-curveslider-designsurface)
+17. [Build & test](#17-build--test)
 
 ---
 
@@ -105,7 +107,7 @@ Three layers, strictly bottom-up. **Layers 1 and 2 never import tokens.**
 |-------|------|------|
 | 1 — render primitives | `src/svg/` | Thin SVG wrappers: `Group`, `Path`, `TextLine`. No layout logic. |
 | 2 — layout engine | `src/layout/` | Pure functions + hooks: coordinate scale, text measurement, flow placement, arc-length curves, breakpoints, path morphing. |
-| 3 — components | `src/components/` | `VectorUIRoot`, `Text`, `Frame`, `Flow`, `PathFlow`, `Pill`, `TokenDefs`. |
+| 3 — components | `src/components/` | `VectorUIRoot`, `Text`, `Frame`, `Card`, `Flow`, `PathFlow`, `Pill`, `VectorButton`, `WrapText`, `Float`, `CurveSlider`, `DesignSurface`, `TokenDefs`. |
 | tokens | `src/tokens/` | Design tokens — consumed at Layer 3 only. |
 
 Most apps consume Layer 3 + tokens. Layers 1 and 2 are escape hatches.
@@ -122,12 +124,21 @@ the filter `<defs>`.
 |------|------|---------|-------|
 | `width` | `number \| "auto"` | `"auto"` | viewBox width in layout units, or `"auto"` to track pixel width (pins `scale` to 1). Defaults to `"auto"`, so an unsized root reflows and wraps at its real boundary; pass a number for uniform scaling. |
 | `height` | `number \| "content"` | `"content"` | viewBox height in layout units, or `"content"` to fit the rendered content (the default). |
-| `style` | `CSSProperties` | — | Applied to the `<svg>`. Use for `maxWidth`, `minWidth`, `background`. |
+| `padding` | `number` | `0` | Inner padding in **layout units** (NOT CSS). Wraps the subtree in a `translate(p, p)` group and grows the `height="content"` fit by `2p`. The "framed root" shortcut — no `<Flow padding=…>` wrapper needed for a single centered card. Does NOT center on the cross-axis; for distribution use `<Flow>`. |
+| `style` | `CSSProperties` | — | Applied to the `<svg>`. Use for `maxWidth`, `minWidth`, `background`. CSS `padding` on `style` pads the OUTER element box (HTML layout) — not the viewBox content. Use the `padding` prop above for inner padding. |
 | …`SVGProps` | | | `role`, `aria-*`, etc. forwarded to the `<svg>`. |
 
 ```tsx
 <VectorUIRoot width="auto" height="content" style={{ minWidth: 480 }}>
   …
+</VectorUIRoot>
+
+// "Framed card" — no Flow needed:
+<VectorUIRoot
+  padding={56}
+  style={{ maxWidth: 520, background: "#f4f3ee" }}
+>
+  <Card width={520 - 112} … />
 </VectorUIRoot>
 ```
 
@@ -141,7 +152,7 @@ constant size as the viewBox scales.
 
 | Prop | Type | Default | Notes |
 |------|------|---------|-------|
-| `children` | `string` | — | Plain text only (no inline markup — see [Limitations](#13-limitations--rough-edges)). |
+| `children` | `string` | — | Plain text only (no inline markup — see [Limitations](#15-limitations--rough-edges)). |
 | `font` | `string` | — | CSS font shorthand in **px**, e.g. `"600 16px Inter"`. |
 | `lineHeight` | `number` | — | Line-box height in **CSS px**. |
 | `maxWidth` | `number \| "100%"` | `"100%"` | Wrap width in layout units. Defaults to `"100%"` — like a block element, text fills its container and wraps. `"100%"` resolves to the enclosing `Flow`'s content box (inside its padding) or `Frame` slot, falling back to the viewBox edge. Pass a number to wrap at a fixed width. |
@@ -149,7 +160,7 @@ constant size as the viewBox scales.
 | `fill` | `string` | `"currentColor"` | |
 | `letterSpacing` | `number` | — | In px. |
 | `sizing` | `"screen" \| "layout"` | `"screen"` | `"layout"` reads `font`/`lineHeight` as layout units so the text scales with the viewBox (for labels inside a graphic). See below. |
-| `flowAround` | `FlowAround` | — | Wrap text around a floated shape (see [Recipes](#12-recipes)). |
+| `flowAround` | `FlowAround` | — | Wrap text around a floated shape (see [Recipes](#14-recipes)). |
 | `onMeasure` | `(size: { width, height }) => void` | — | Reports the wrapped block size in layout units. |
 
 Spread a `type` token straight in: `<Text {...tokens.type.body} maxWidth="100%">`.
@@ -170,7 +181,7 @@ edge. Supply `rightIntrusionAt` as well and the text wraps on both sides at
 once (e.g. poured through an archway).
 
 > For the common case — draw a shape *and* wrap text around it from a single
-> path string — reach for [`WrapText`/`Float`](#12-recipes) (§12). Raw
+> path string — reach for [`WrapText`/`Float`](#14-recipes) (§14). Raw
 > `flowAround` below stays the low-level escape hatch for analytical or
 > hand-tuned intrusions.
 
@@ -184,7 +195,7 @@ A `Frame` is a closed path plus **named slots**. Children render into slots via
 
 | Prop | Type | Default | Notes |
 |------|------|---------|-------|
-| `shape` | `(w, h) => string` | — | Path generator. Use `tokens.shapes.*`. |
+| `shape` | `ShapeGenerator \| ShapeBundle` | — | Path generator (`(w,h) => string`) or a bundle (`{ path, flowAround? }`). See [§13 ShapeBundle](#13-shapebundle--shape-aware-text-wrap). Use `tokens.shapes.*` for plain generators. |
 | `width` | `number \| "auto"` | — | Layout units, or `"auto"` to shrink-wrap to the rightmost slot edge + `padding`. |
 | `height` | `number \| "auto"` | — | Layout units, or `"auto"` to shrink-wrap to the lowest slot edge + `padding`. |
 | `slots` | `Record<string, SlotSpec>` | — | Named slot definitions (below). |
@@ -285,13 +296,15 @@ type ShapeFitSlot = {
   height: number | "fill" | "content";
   /** Override shape to fit inside; defaults to the Frame's own `shape`.
    *  Lets a slot fit inside an inner feature (e.g. a triangle whose title
-   *  fills it) different from the Frame's outline. */
+   *  fills it) different from the Frame's outline. Plain generator only —
+   *  the closed-form `flowAround` fast path (§13) is currently scoped to
+   *  the Frame-level shape; override-shape slots always sample. */
   shape?: ShapeGenerator;
   padding?: number;                    // inset from the contour
 };
 ```
 
-This is what powers the library's [`Card`](#12-recipes) — body text wraps the
+This is what powers the library's [`Card`](#14-recipes) — body text wraps the
 card's scoop or blob; actions sit in a derived safe rectangle — without the
 consumer wiring any intrusion.
 
@@ -441,6 +454,45 @@ one unit and the label stays centred at any scale (no `scale` math anywhere).
 <Pill textStyle={tokens.type.label} shape={tokens.shapes.leaf}>Leaf chip</Pill>
 ```
 
+### `VectorButton`
+
+A **path-as-button** core component. The `shape` prop IS the outline, the
+filled surface, AND the hit target — one path, no rectangular wrapper.
+Children render on top so icons / labels ride the shape. Keyboard
+activation (Enter / Space), focus, and hover are wired up here once;
+consumers only supply callbacks. Like `Card.shape`, it knows nothing about
+any specific shape family: pass a hexagon, a cog, a leaf, a hand-drawn
+blob — anything that fits in a `d` string.
+
+| Prop | Type | Default | Notes |
+|------|------|---------|-------|
+| `shape` | `string` | — | Path data — the outline AND the click target. |
+| `fill` | `string` | `tokens.color.accent` | Path fill. |
+| `stroke`, `strokeWidth`, `fillRule` | | | Forwarded to the path. |
+| `children` | `ReactNode` | — | Content rendered on top (icon, text, badges, …). |
+| `onClick` | `(event) => void` | — | Fires on click AND on Enter/Space when focused. |
+| `onHoverChange` | `(hovered) => void` | — | Called whenever hover starts or ends. |
+| `disabled` | `boolean` | `false` | No click, no keyboard activation, no hover state. |
+| `cursor` | `CSS cursor` | `"pointer"` | `"default"` when disabled. |
+| `role`, `aria-*`, `tabIndex`, … | | | SVG `<g>` props pass through. `role` defaults to `"button"`. |
+
+The component sets `data-hovered` on its `<g>` while hovered, so a
+CSS selector or a downstream component can style hover without owning
+the state.
+
+```tsx
+<VectorButton
+  shape={hexagon(27)}                       // any path string
+  fill={tokens.color.surface}
+  stroke={tokens.color.line}
+  role="menuitem"
+  aria-label="home"
+  onClick={() => …}
+>
+  <Icon name="home" size={24} />
+</VectorButton>
+```
+
 ### Layer 1 — `Group`, `Path`, `Circle`, `TextLine`
 
 Thin SVG wrappers, for escape-hatch rendering:
@@ -508,7 +560,155 @@ the `tokens.shapes.*` family does).
 
 ---
 
-## 12. Recipes
+## 12. Animation — drive a prop over time
+
+VectorUI primitives are pure functions of their props, so animation reduces
+to a single recipe: **drive a prop over time, re-render**. The library ships
+a small RAF-driven kit at Layer 2; the rest happens for free.
+
+### The five hooks
+
+All hooks honor `prefers-reduced-motion` (the user setting is respected
+automatically — they snap to the target instead of tweening).
+
+| Hook | Signature | What it tweens |
+|------|-----------|----------------|
+| `useTween(target, opts?)` | `(number, { durationMs?, easing? }) => number` | A scalar (scale, opacity, progress…). |
+| `useTweenedNumbers(targets, opts?)` | `(number[], …) => number[]` | An array of scalars in lockstep (per-row widths, per-item radii, …). |
+| `useTweenedPoints(target, opts?)` | `(CurvePoint[], …) => CurvePoint[]` | A curve's vertices (morph one polyline into another). |
+| `useTweenedPath(target, opts?)` | `(string, …) => string` | An SVG `d` string (when you only have the rendered path). |
+| `useStaggeredReveal(count, open, opts?)` | `(number, boolean, …) => number[]` | Per-item progress [0,1] with a stagger — fan-outs / cascading reveals. |
+
+`opts` is `{ durationMs?: number; easing?: (t: number) => number; staggerMs?: number }`
+(staggerMs only on the array hooks).
+
+```tsx
+import { useTween, useTweenedPoints } from "vectorui";
+
+// Animate a scale on hover. The component is a pure function of `scale`.
+function Chip() {
+  const [hovered, setHovered] = useState(false);
+  const scale = useTween(hovered ? 1.18 : 1, { durationMs: 220 });
+  return (
+    <g
+      transform={`scale(${scale})`}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      …
+    </g>
+  );
+}
+```
+
+### Mid-flight retargets
+
+Each tween snapshots its current eased mid-value when the target changes,
+so a hover-grow that the cursor leaves mid-flight reverses smoothly from
+where it is, not from the start.
+
+### Content-keyed effects
+
+The internal tween effect keys on a **content hash** of the target, not the
+reference. This means a caller that builds a fresh array literal each
+render (`targets.map(...)` is the canonical case) does **not** restart the
+tween every frame. A subtle but common footgun, retired once.
+
+### The "drive parameters, not the rendered path" rule
+
+When you want text to wrap a morphing shape, tween the shape's
+**parameters** — not the rendered `d` string. The parametric generator
+emits BOTH the path AND a closed-form `flowAround` each frame; Card
+consumes the bundle (§13) and skips contour sampling. Demo 9 Scene C is
+the worked example. `useTweenedPath` is still in the kit for the (rarer)
+case where all you have is a `d` from a non-parametric source.
+
+---
+
+## 13. `ShapeBundle` — shape-aware text wrap
+
+`Card.shape` and `Frame.shape` accept either a plain `ShapeGenerator`
+(`(w, h) => string`) or a `ShapeBundle`:
+
+```ts
+type ShapeBundle = {
+  path: ShapeGenerator;
+  flowAround?: (columnLeft: number, columnTop: number) => FlowAround;
+};
+
+type ShapeProp = ShapeGenerator | ShapeBundle;
+```
+
+**Why this exists.** A `Frame` shape-fit text slot has to know where the
+shape's contour intrudes into the text column. Without help, Frame derives
+this by SAMPLING the rendered `d` per band — walking the path tokens,
+finding x-intercepts. Robust for unknown shapes; expensive when the path
+changes every frame.
+
+A parametric shape usually knows its intrusion **in closed form** — there
+is an analytical function for "how far does the scoop poke into a column
+at y?" When the shape ships that function as `flowAround`, Frame plugs it
+straight in and skips sampling. The Demo 9 Scene C morph runs at full 60
+fps because of this.
+
+**Producing a bundle.** Pair `path` with a `flowAround` that takes the
+text column's top-left in shape coords and returns a `FlowAround`
+(`{ intrusionAt?, rightIntrusionAt?, occupancyAt?, gap? }`):
+
+```ts
+function myShape(opts: MyOpts): ShapeBundle {
+  // …closed-form scoop / curve / blob…
+  const path: ShapeGenerator = (w, h) => "M …";
+  const flowAround = (cl: number, ct: number): FlowAround => ({
+    intrusionAt: (yTop, yBot) => /* how far the contour pokes into the column */,
+  });
+  return { path, flowAround };
+}
+```
+
+`scoopCard(...)` is the canonical example — it returns
+`{ path, intrusionInto, flowAround }` (the third field is what Card
+consumes).
+
+**Consuming a bundle.**
+
+```tsx
+// In a Card:
+<Card shape={scoopCard({ … })} title="…" body="…" />
+
+// In a Frame (more general):
+<Frame shape={scoopCard({ … })} width="auto" height="auto" slots={{ … }}>
+  …
+</Frame>
+```
+
+If the bundle's `flowAround` is missing (`{ path }` only), Frame falls
+back to sampling. Same API, slower path. Either works.
+
+**Animating a bundle.**
+
+```tsx
+const progress = useTween(deep ? 1 : 0, { durationMs: 480 });
+const shape = scoopCard({
+  scoopTop:   lerp(SHALLOW.scoopTop,   DEEP.scoopTop,   progress),
+  scoopHeight: lerp(SHALLOW.scoopHeight, DEEP.scoopHeight, progress),
+  depth:      lerp(SHALLOW.depth,      DEEP.depth,      progress),
+});
+<Card shape={shape} title="…" body="…" />
+```
+
+Each render's `scoopCard(...)` returns a fresh bundle whose `flowAround` is
+the closed-form profile for the current params. Text re-wraps the morphing
+contour with no per-frame contour sampling.
+
+**Scope.** The fast path applies to the **Frame-level** shape. Override-shape
+slots (`shape?` in `ShapeFitSlot`) still go through sampling — the
+slot-local intrusion is not yet threaded through. Most cards don't use
+override shapes, so this rarely matters.
+
+---
+
+## 14. Recipes
 
 ### A button
 
@@ -702,7 +902,7 @@ needed. For one-shot interpolation outside a render loop, `morphPath` and
 
 ---
 
-## 13. Limitations & rough edges
+## 15. Limitations & rough edges
 
 Honest list — useful when assessing the API:
 
@@ -736,7 +936,7 @@ Honest list — useful when assessing the API:
 
 ---
 
-## 14. Edit mode (`CurveSlider`, `DesignSurface`)
+## 16. Edit mode (`CurveSlider`, `DesignSurface`)
 
 Phase 3 added a small protocol for turning any VectorUI scene into a direct-
 manipulation editor — drag a point in the running UI and the prop that
@@ -848,7 +1048,7 @@ component), see [`edit-mode.md`](./edit-mode.md).
 
 ---
 
-## 15. Build & test
+## 17. Build & test
 
 ```bash
 npm run dev      # dev server at http://localhost:5181

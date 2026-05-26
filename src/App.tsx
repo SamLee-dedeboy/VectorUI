@@ -1,11 +1,19 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { useRoute, navigate } from "./router";
 import { CodeView } from "./CodeView";
 import { DEMOS, PLANNED, type DemoEntry } from "./demos/registry";
 
+// The docs route is code-split: the markdown bodies + `marked` parser only
+// ship when a `#/docs` URL is visited, so demos (and the index) don't pay
+// for ~200 KB of doc weight on first paint.
+const DocsRoute = lazy(() => import("./docs/DocsView"));
+
 export function App() {
   const route = useRoute();
   const active = DEMOS.find((d) => d.id === route);
+  // Docs route convention: `#/docs` for the index, `#/docs/<id>` for a doc.
+  const docMatch = route.match(/^docs(?:\/(.+))?$/);
+  const docId = docMatch ? (docMatch[1] ?? null) : undefined;
 
   return (
     <div className="app">
@@ -14,9 +22,18 @@ export function App() {
           VectorUI
         </a>
         <span className="tagline">SVG-first UI — feasibility prototype</span>
+        <nav className="app-nav">
+          <a href="#/docs" onClick={() => navigate("docs")}>
+            Docs
+          </a>
+        </nav>
       </header>
       <main className="app-main">
-        {active && active.Component ? (
+        {docId !== undefined ? (
+          <Suspense fallback={<DocsLoading />}>
+            <DocsRoute docId={docId} />
+          </Suspense>
+        ) : active && active.Component ? (
           <DemoView demo={active} />
         ) : (
           <DemoIndex />
@@ -194,6 +211,16 @@ function DemoIndex() {
           </ul>
         </>
       ) : null}
+    </article>
+  );
+}
+
+function DocsLoading() {
+  return (
+    <article>
+      <p className="lede" style={{ color: "var(--muted)" }}>
+        Loading docs…
+      </p>
     </article>
   );
 }

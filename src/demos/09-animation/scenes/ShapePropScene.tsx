@@ -24,7 +24,6 @@ import { tokens } from "../../../tokens";
  */
 
 const CARD_W = 340;
-const CARD_H = 220;
 
 // Two scoop configurations — we interpolate their params (not the rendered
 // d string), so every frame's `scoopCard(...)` call yields a fresh bundle
@@ -96,7 +95,6 @@ export function ShapePropScene() {
           <Card
             shape={shape}
             width={CARD_W}
-            height={CARD_H}
             title="Text follows the path"
             body={BODY}
           />

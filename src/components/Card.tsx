@@ -1,4 +1,4 @@
-import type { ReactNode, SVGProps } from "react";
+import { useMemo, type ReactNode, type SVGProps } from "react";
 import { Frame, type ShapeProp } from "./Frame";
 import { Text } from "./Text";
 import { tokens, type TextStyle } from "../tokens";
@@ -101,33 +101,50 @@ export function Card({
   filter = filters.softShadow,
   ...gProps
 }: CardProps) {
-  const slots: Record<string, import("./Frame").SlotSpec> = {
-    body: {
-      type: "shape-fit",
-      mode: "text",
-      y: title
-        ? { after: "header", gap: headerGap }
-        : padding,
-      height: "content",
-      padding: bodyPadding,
-    },
-  };
-  if (title) {
-    slots.header = {
-      type: "shape-fit",
-      mode: "safe",
-      y: padding,
-      height: titleHeight,
+  // Memo the slots so Frame's downstream useMemos (which include `slots` in
+  // their deps) stay stable across renders. A fresh slots literal each render
+  // would cascade into shape-fit re-sampling — ~120ms × N settle frames =
+  // hundreds of wasted ms on Cards with a sampled-contour shape.
+  const hasHeader = !!title;
+  const hasActions = !!actions;
+  const slots = useMemo<Record<string, import("./Frame").SlotSpec>>(() => {
+    const s: Record<string, import("./Frame").SlotSpec> = {
+      body: {
+        type: "shape-fit",
+        mode: "text",
+        y: hasHeader
+          ? { after: "header", gap: headerGap }
+          : padding,
+        height: "content",
+        padding: bodyPadding,
+      },
     };
-  }
-  if (actions) {
-    slots.actions = {
-      type: "shape-fit",
-      mode: "safe",
-      y: { after: "body", gap: actionsGap },
-      height: "content",
-    };
-  }
+    if (hasHeader) {
+      s.header = {
+        type: "shape-fit",
+        mode: "safe",
+        y: padding,
+        height: titleHeight,
+      };
+    }
+    if (hasActions) {
+      s.actions = {
+        type: "shape-fit",
+        mode: "safe",
+        y: { after: "body", gap: actionsGap },
+        height: "content",
+      };
+    }
+    return s;
+  }, [
+    hasHeader,
+    hasActions,
+    padding,
+    headerGap,
+    actionsGap,
+    bodyPadding,
+    titleHeight,
+  ]);
 
   return (
     <Frame

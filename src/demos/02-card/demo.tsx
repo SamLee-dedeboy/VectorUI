@@ -1,9 +1,9 @@
 import { VectorUIRoot } from "../../components/VectorUIRoot";
-import { Flow } from "../../components/Flow";
 import { Card } from "../../components/Card";
 import { LandscapeCard } from "../../components/LandscapeCard";
 import { scoopCard, triangleFloat, wobbleEdge } from "../../shapes";
-import { Button } from "./Button";
+import { Pill } from "../../components/Pill";
+import { tokens } from "../..";
 
 /**
  * Demo 2 — `Card`: a shape-as-container core component.
@@ -14,8 +14,12 @@ import { Button } from "./Button";
  * contour, rigid widgets land in a derived safe rectangle. Card itself knows
  * nothing about any specific shape family.
  *
- *   Version A — `<Card shape={scoopCard(...).path}>`: a scoop is carved into
- *   the left edge; the body paragraph hugs the curve, then squares off below.
+ *   Version A — `<Card shape={scoopCard(...)}>`: a scoop is carved into the
+ *   left edge; the body paragraph hugs the curve, then squares off below.
+ *   We pass the FULL bundle (`{ path, flowAround }`), not just `.path`, so
+ *   Card's shape-fit slot consumes the closed-form intrusion and skips
+ *   per-frame contour sampling. Bundle vs. plain `.path` is the difference
+ *   between ~50 ms and ~2.4 s on first paint.
  *
  *   Version B — `<LandscapeCard>` is a thin wrapper over the same `Card`,
  *   pointing its `body` at a `<WrapText>` with a `<Float>`. The Float draws
@@ -46,12 +50,17 @@ const MARGIN = 56;
 
 // ---- Version A: scoop shape built here, passed as a prop ----
 
+// Pass the FULL bundle (path + closed-form flowAround), not just `.path`.
+// That lets Card's shape-fit slot consume the analytical intrusion and skip
+// per-band contour sampling — which is the difference between ~1ms and
+// ~115ms per layout settle iteration. With a 20-frame settle loop, that's
+// 2 seconds vs 20ms.
 const scoopShape = scoopCard({
   cornerRadius: 22,
   scoopTop: 64,
   scoopHeight: 150,
   depth: 104,
-}).path;
+});
 
 // ---- Version B: outer card + inner triangle, both built here, both as props ----
 
@@ -96,8 +105,9 @@ export function Demo() {
       </p>
       <p style={{ color: "#555", maxWidth: 640 }}>
         <strong>Version A</strong> is{" "}
-        <code>&lt;Card shape={"{"}scoopCard(...){"}"}/&gt;</code> with a
-        scoop carved into the left edge. <strong>Version B</strong> —{" "}
+        <code>&lt;Card shape={"{"}scoopCard(...){"}"}/&gt;</code> — passing
+        the full <code>{`{ path, flowAround }`}</code> bundle — with a scoop
+        carved into the left edge. <strong>Version B</strong> —{" "}
         <code>LandscapeCard</code> — is itself a thin wrapper over the same{" "}
         <code>Card</code>, pointing its <code>body</code> at a{" "}
         <code>&lt;WrapText&gt;</code> with a <code>&lt;Float&gt;</code> that
@@ -110,23 +120,27 @@ export function Demo() {
         Version A — <code>Card</code> with a scoop-edge shape
       </p>
       <VectorUIRoot
-        width={ROOT_WIDTH}
-        height="content"
+        padding={MARGIN}
         style={{ maxWidth: ROOT_WIDTH, background: "#f0efe9" }}
       >
-        <Flow
-          padding={MARGIN}
-          align="center"
-          crossSize={ROOT_WIDTH - MARGIN * 2}
-        >
-          <Card
-            shape={scoopShape}
-            width={400}
-            title="Text follows the path"
-            body={BODY_A}
-            actions={<Button>Got it</Button>}
-          />
-        </Flow>
+        <Card
+          shape={scoopShape}
+          width={400}
+          title="Text follows the path"
+          body={BODY_A}
+          actions={
+            <Pill
+              role="button"
+              tabIndex={0}
+              style={{ cursor: "pointer" }}
+              textStyle={tokens.type.label}
+              height={34}
+              paddingX={18}
+            >
+              Got it
+            </Pill>
+          }
+        />
       </VectorUIRoot>
 
       <p className="variant-label">
@@ -134,29 +148,22 @@ export function Demo() {
         with a Float-as-feature body
       </p>
       <VectorUIRoot
-        width={ROOT_WIDTH}
-        height="content"
+        padding={MARGIN}
         style={{ maxWidth: ROOT_WIDTH, background: "#e8e3d3" }}
       >
-        <Flow
-          padding={MARGIN}
-          align="center"
-          crossSize={ROOT_WIDTH - MARGIN * 2}
-        >
-          <LandscapeCard
-            outline={wobblyRect}
-            feature={triangle}
-            featureWidth={TRI_W}
-            featureHeight={TRI_H}
-            width={400}
-            title="A spooky wobbly title that follows the path"
-            body={BODY_B}
-            surface="#f3ecde"
-            featureFill="#243029"
-            titleFill="#f3ecde"
-            bodyFill="#3d4540"
-          />
-        </Flow>
+        <LandscapeCard
+          outline={wobblyRect}
+          feature={triangle}
+          featureWidth={TRI_W}
+          featureHeight={TRI_H}
+          width={400}
+          title="A spooky wobbly title that follows the path"
+          body={BODY_B}
+          surface="#f3ecde"
+          featureFill="#243029"
+          titleFill="#f3ecde"
+          bodyFill="#3d4540"
+        />
       </VectorUIRoot>
     </div>
   );
