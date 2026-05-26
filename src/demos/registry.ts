@@ -18,6 +18,8 @@ import textFlowDemoSrc from "./01-text-flow/demo.tsx?raw";
 import cornerBlobSrc from "../shapes/cornerBlob.ts?raw";
 import archFloatSrc from "../shapes/archFloat.ts?raw";
 import cardDemoSrc from "./02-card/demo.tsx?raw";
+import cardSrc from "../components/Card.tsx?raw";
+import landscapeCardSrc from "../components/LandscapeCard.tsx?raw";
 import scoopCardSrc from "../shapes/scoopCard.ts?raw";
 import triangleFloatSrc from "../shapes/triangleFloat.ts?raw";
 import wobbleSrc from "../shapes/wobble.ts?raw";
@@ -84,6 +86,8 @@ export const DEMOS: DemoEntry[] = [
     Component: CardDemo,
     sources: [
       { name: "demo.tsx", code: cardDemoSrc },
+      { name: "Card.tsx", code: cardSrc },
+      { name: "LandscapeCard.tsx", code: landscapeCardSrc },
       { name: "scoopCard.ts", code: scoopCardSrc },
       { name: "triangleFloat.ts", code: triangleFloatSrc },
       { name: "wobble.ts", code: wobbleSrc },
