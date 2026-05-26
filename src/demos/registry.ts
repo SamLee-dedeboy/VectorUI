@@ -79,10 +79,11 @@ export const DEMOS: DemoEntry[] = [
   },
   {
     id: "02-card",
-    title: "2 · Non-rectangular card",
+    title: "2 · Card — a shape-as-container core component",
     blurb:
-      "A scoop-edged card (hover wobbles all four edges) and a hand-drawn landscape postcard with a mountain horizon.",
-    proves: "Steps 5–6: Frame, the slot system, path-as-container, flow-around.",
+      "Two cards built from the same Card core component: pass any shape as a prop and the body text auto-follows its contour; rigid widgets land in a derived safe rectangle. Version B (LandscapeCard) is itself a thin wrapper over the same Card, with a Float-as-feature body.",
+    proves:
+      "Card as a reusable core component: shape-as-prop + contour-fit slots; one Float doing three jobs (drawn, wrap-around, fill-inside).",
     Component: CardDemo,
     sources: [
       { name: "demo.tsx", code: cardDemoSrc },

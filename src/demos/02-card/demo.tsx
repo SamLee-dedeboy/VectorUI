@@ -6,29 +6,33 @@ import { scoopCard, triangleFloat, wobbleEdge } from "../../shapes";
 import { Button } from "./Button";
 
 /**
- * Demo 2 — non-rectangular card (SPEC §11).
+ * Demo 2 — `Card`: a shape-as-container core component.
  *
- * Both cards are now the library's reusable components — `<Card>` and
- * `<LandscapeCard>` — and the SHAPES are constructed here in `demo.tsx` and
- * passed as props. Card knows nothing about scoops; LandscapeCard knows
- * nothing about triangles. The body/title text auto-follow whatever boundary
- * the demo passes in, because Frame's `shape-fit` slots derive the contour
- * from the path via the occupancy engine.
+ * Both versions exercise the SAME core component, `<Card>`. Card takes a
+ * `shape` (any `ShapeGenerator`) and renders a header / body / actions stack
+ * whose content auto-follows the shape's boundary — body text reflows to the
+ * contour, rigid widgets land in a derived safe rectangle. Card itself knows
+ * nothing about any specific shape family.
  *
- * Version A constructs a `scoopCard` and passes its path to `<Card shape={...}>`.
- * Version B constructs a wobbly rect for the outer card and a `triangleFloat`
- * for the inner feature.
+ *   Version A — `<Card shape={scoopCard(...).path}>`: a scoop is carved into
+ *   the left edge; the body paragraph hugs the curve, then squares off below.
  *
- * Proves: Frame as a shape-container with contour-fit slots; arbitrary shape
- * passed in; rigid widgets in a derived safe rectangle.
+ *   Version B — `<LandscapeCard>` is a thin wrapper over the same `Card`,
+ *   pointing its `body` at a `<WrapText>` with a `<Float>`. The Float draws
+ *   an inner feature shape (a triangle), holds the title text inside it, AND
+ *   the surrounding body wraps around it — three jobs from one path. No
+ *   bespoke Frame slots; no per-shape intrusion. Look at `LandscapeCard.tsx`
+ *   in the Code tab: it's about twenty lines of composition.
  *
- * Note on animation: Card has no built-in animation — it just renders whatever
- * `shape` you hand it. A consumer can morph the shape by re-rendering with a
- * new path per frame (e.g., a hover-driven `scoopCard` morph wired via
- * `useState` + `useTween`), but that re-renders the whole subtree each tick;
- * a dedicated `<MorphPath>` primitive that animates the `d` attribute via a
- * ref (no React re-render) is a future addition. For this demo, both cards
- * are static so the shape-as-prop + contour-fit primitives speak for themselves.
+ * All shapes are constructed in this file and passed as props — so swapping
+ * `scoopCard` for `cornerBlob`, or the triangle for an arch, is a one-line
+ * change at the call site.
+ *
+ * Note on animation: Card has no built-in animation. A consumer can morph the
+ * shape today by re-rendering with a new path per frame, but a dedicated
+ * `<MorphPath>` primitive that animates the `d` attribute via a ref (no React
+ * re-render) is a future addition. Both cards here are static so the
+ * shape-as-prop + contour-fit primitives speak for themselves.
  */
 
 const BODY_A =
@@ -81,17 +85,29 @@ export function Demo() {
   return (
     <div>
       <p style={{ color: "#555", maxWidth: 640 }}>
-        Two cards, each a generated path. <strong>Version A</strong> carves a
-        scoop into its left edge and pours the body around it.{" "}
-        <strong>Version B</strong> is a hand-drawn postcard whose title sits
-        inside a triangle, with the body text wrapping the triangle's wobbly
-        right slope. Both cards are the library's reusable{" "}
-        <code>Card</code> / <code>LandscapeCard</code>; the shapes are
-        constructed here in <code>demo.tsx</code> and passed as props.
+        Both versions are the library's core <code>Card</code> component —
+        a shape-as-container with a header / body / actions stack whose
+        content auto-follows the boundary. <code>Card</code> takes a{" "}
+        <code>shape</code> prop (any path generator); the body text reflows
+        to the contour, and rigid widgets land in a derived safe rectangle.
+        Card knows nothing about any specific shape family — swapping a
+        scoop for a blob, or a triangle for an arch, is a one-line change at
+        the call site.
+      </p>
+      <p style={{ color: "#555", maxWidth: 640 }}>
+        <strong>Version A</strong> is{" "}
+        <code>&lt;Card shape={"{"}scoopCard(...){"}"}/&gt;</code> with a
+        scoop carved into the left edge. <strong>Version B</strong> —{" "}
+        <code>LandscapeCard</code> — is itself a thin wrapper over the same{" "}
+        <code>Card</code>, pointing its <code>body</code> at a{" "}
+        <code>&lt;WrapText&gt;</code> with a <code>&lt;Float&gt;</code> that
+        does three jobs from one path: draws an inner triangle, holds the
+        title inside it, and lets the body wrap around it. See the Code tab
+        for both compositions.
       </p>
 
       <p className="variant-label">
-        Version A — scoop edge: body text auto-wraps the scoop
+        Version A — <code>Card</code> with a scoop-edge shape
       </p>
       <VectorUIRoot
         width={ROOT_WIDTH}
@@ -114,8 +130,8 @@ export function Demo() {
       </VectorUIRoot>
 
       <p className="variant-label">
-        Version B — hand-drawn postcard, title in a triangle, body wraps its
-        slope
+        Version B — <code>LandscapeCard</code>: the same <code>Card</code>,
+        with a Float-as-feature body
       </p>
       <VectorUIRoot
         width={ROOT_WIDTH}
