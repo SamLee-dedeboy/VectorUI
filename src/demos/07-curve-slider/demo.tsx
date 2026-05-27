@@ -41,6 +41,12 @@ import { tokens } from "../../tokens";
  */
 
 // ---------- A — Volume with a sweet spot ------------------------------------
+//
+// Coordinate-system note: the curve is built in its OWN local frame —
+// x ∈ [0, VOLUME_W], y ∈ [0, VOLUME_H], anchored at the local origin
+// (0, 0). The viewBox-relative placement is the single `<g transform>`
+// in the JSX below. "What the curve IS" stays separate from "where it
+// sits in the SVG."
 
 const VOLUME_W = 320;
 const VOLUME_H = 80;
@@ -48,6 +54,7 @@ const VOLUME_H = 80;
  *  smaller = sharper. 0.4 reads visibly peaked without being a hairline. */
 const CUSP_P = 0.4;
 const VOLUME_STEP = 0.025; // one button press = 2.5% of curve arc length
+const VOLUME_PAD = 20; // viewBox padding around the curve
 
 /** Reverse-U with a CUSP at the tip — see the header note. */
 function volumeCurve(): Curve {
@@ -107,11 +114,16 @@ function VolumeSweetSpot() {
       </div>
 
       <VectorUIRoot
-        width={VOLUME_W + 40}
+        width={VOLUME_W + VOLUME_PAD * 2}
         height={VOLUME_H + 30}
-        style={{ background: tokens.color.surfaceSunken, maxWidth: VOLUME_W + 40 }}
+        style={{
+          background: tokens.color.surfaceSunken,
+          maxWidth: VOLUME_W + VOLUME_PAD * 2,
+        }}
       >
-        <g transform={`translate(20 12)`}>
+        {/* ONE placement transform. Inside, everything is in the curve's
+            local frame: (0, 0) = top-left of the chart area. */}
+        <g transform={`translate(${VOLUME_PAD} 12)`}>
           {/* Baseline at the bottom of the chart, decorative. */}
           <Path
             d={`M 0 ${VOLUME_H} L ${VOLUME_W} ${VOLUME_H}`}
@@ -153,9 +165,15 @@ const pillBtn: React.CSSProperties = {
 };
 
 // ---------- B — Hike elevation profile --------------------------------------
+//
+// Coordinate-system note: same separation as scene A — the trail's polyline
+// vertices live in their OWN local frame (x ∈ [0, TRAIL_W], y ∈ [0,
+// TRAIL_H], anchored at local 0,0). The wrapping `<g transform>` in the
+// JSX places the chart inside the SVG.
 
 const TRAIL_W = 360;
 const TRAIL_H = 90;
+const TRAIL_PAD = 20;
 /** Total trail length in km, used to label distance. */
 const TRAIL_KM = 8.4;
 /** Elevation range — `y = 0` at the top of the chart maps to ALT_TOP_M,
@@ -233,11 +251,16 @@ function ElevationProfile() {
       </div>
 
       <VectorUIRoot
-        width={TRAIL_W + 40}
+        width={TRAIL_W + TRAIL_PAD * 2}
         height={TRAIL_H + 30}
-        style={{ background: tokens.color.surfaceSunken, maxWidth: TRAIL_W + 40 }}
+        style={{
+          background: tokens.color.surfaceSunken,
+          maxWidth: TRAIL_W + TRAIL_PAD * 2,
+        }}
       >
-        <g transform={`translate(20 12)`}>
+        {/* ONE placement transform. Inside, the trail lives at local
+            (0, 0)..(TRAIL_W, TRAIL_H). */}
+        <g transform={`translate(${TRAIL_PAD} 12)`}>
           {/* Ground fill — softens the trail's silhouette. */}
           <Path
             d={groundPath}
@@ -268,21 +291,31 @@ function ElevationProfile() {
 }
 
 // ---------- C — Full-circle clock -------------------------------------------
+//
+// Coordinate-system note: the arc and the hour ticks are all defined in the
+// clock's LOCAL frame — origin at the dial's center, no viewBox numbers
+// hard-coded into the geometry. The wrapping `<g transform>` in the JSX is
+// the only place the viewBox-relative placement (CLOCK_CX, CLOCK_CY) shows
+// up. CurveSlider's pointer handler uses `getScreenCTM`, which includes the
+// ancestor translate, so dragging works through the placement transform.
 
+const CLOCK_W = 280;
+const CLOCK_H = 240;
 const CLOCK_R = 80;
-const CLOCK_CX = 110;
-const CLOCK_CY = 110;
+const CLOCK_CX = CLOCK_W / 2; // viewBox-x where the dial center sits
+const CLOCK_CY = CLOCK_H / 2; // viewBox-y where the dial center sits
 const HOURS = 12;
 /** Place 12 at the top: start angle = -π/2 (12 o'clock), sweep clockwise. */
 const CLOCK_START = -Math.PI / 2;
 const CLOCK_SWEEP = 2 * Math.PI;
 
 function ClockFace() {
+  // Arc anchored at LOCAL (0, 0) — the dial's center.
   const curve = useMemo(
     () =>
       arc({
-        cx: CLOCK_CX,
-        cy: CLOCK_CY,
+        cx: 0,
+        cy: 0,
         radius: CLOCK_R,
         startAngle: CLOCK_START,
         endAngle: CLOCK_START + CLOCK_SWEEP,
@@ -301,20 +334,22 @@ function ClockFace() {
   const hourIndex = Math.round(t * HOURS) % HOURS;
   const hourLabel = hourIndex === 0 ? 12 : hourIndex;
 
-  // Hour ticks and numerals around the clock face.
+  // Hour ticks and numerals in LOCAL coords (origin = dial center).
   const ticks = Array.from({ length: HOURS }, (_, i) => {
     const a = CLOCK_START + (i / HOURS) * CLOCK_SWEEP;
     const r1 = CLOCK_R - 6;
     const r2 = CLOCK_R + 6;
     const labelR = CLOCK_R + 18;
-    const tx = CLOCK_CX + r1 * Math.cos(a);
-    const ty = CLOCK_CY + r1 * Math.sin(a);
-    const ux = CLOCK_CX + r2 * Math.cos(a);
-    const uy = CLOCK_CY + r2 * Math.sin(a);
-    const lx = CLOCK_CX + labelR * Math.cos(a);
-    const ly = CLOCK_CY + labelR * Math.sin(a);
-    const label = i === 0 ? 12 : i;
-    return { i, tx, ty, ux, uy, lx, ly, label };
+    return {
+      i,
+      tx: r1 * Math.cos(a),
+      ty: r1 * Math.sin(a),
+      ux: r2 * Math.cos(a),
+      uy: r2 * Math.sin(a),
+      lx: labelR * Math.cos(a),
+      ly: labelR * Math.sin(a),
+      label: i === 0 ? 12 : i,
+    };
   });
 
   return (
@@ -326,45 +361,48 @@ function ClockFace() {
         <code> step</code> is <code>1/12</code>.
       </p>
       <VectorUIRoot
-        width={280}
-        height={240}
-        style={{ background: tokens.color.surfaceSunken, maxWidth: 280 }}
+        width={CLOCK_W}
+        height={CLOCK_H}
+        style={{ background: tokens.color.surfaceSunken, maxWidth: CLOCK_W }}
       >
-        {/* Hour ticks behind the slider track. */}
-        <g aria-hidden>
-          {ticks.map(({ i, tx, ty, ux, uy, lx, ly, label }) => (
-            <g key={i}>
-              <Path
-                d={`M ${tx} ${ty} L ${ux} ${uy}`}
-                stroke={tokens.color.inkMuted}
-                strokeWidth={i % 3 === 0 ? 2 : 1.25}
-                strokeLinecap="round"
-                fill="none"
-              />
-              <text
-                x={lx}
-                y={ly}
-                fontFamily="Inter, system-ui, sans-serif"
-                fontSize={11}
-                fontWeight={i % 3 === 0 ? 700 : 500}
-                fill={tokens.color.inkMuted}
-                textAnchor="middle"
-                dominantBaseline="central"
-              >
-                {label}
-              </text>
-            </g>
-          ))}
+        {/* ONE placement transform. Inside, (0, 0) is the dial center. */}
+        <g transform={`translate(${CLOCK_CX} ${CLOCK_CY})`}>
+          {/* Hour ticks behind the slider track, in local coords. */}
+          <g aria-hidden>
+            {ticks.map(({ i, tx, ty, ux, uy, lx, ly, label }) => (
+              <g key={i}>
+                <Path
+                  d={`M ${tx} ${ty} L ${ux} ${uy}`}
+                  stroke={tokens.color.inkMuted}
+                  strokeWidth={i % 3 === 0 ? 2 : 1.25}
+                  strokeLinecap="round"
+                  fill="none"
+                />
+                <text
+                  x={lx}
+                  y={ly}
+                  fontFamily="Inter, system-ui, sans-serif"
+                  fontSize={11}
+                  fontWeight={i % 3 === 0 ? 700 : 500}
+                  fill={tokens.color.inkMuted}
+                  textAnchor="middle"
+                  dominantBaseline="central"
+                >
+                  {label}
+                </text>
+              </g>
+            ))}
+          </g>
+          <CurveSlider
+            curve={curve}
+            value={t}
+            onChange={onChange}
+            step={1 / HOURS}
+            label="Hour"
+            formatValue={() => `${hourLabel}`}
+            trackWidth={6}
+          />
         </g>
-        <CurveSlider
-          curve={curve}
-          value={t}
-          onChange={onChange}
-          step={1 / HOURS}
-          label="Hour"
-          formatValue={() => `${hourLabel}`}
-          trackWidth={6}
-        />
       </VectorUIRoot>
     </div>
   );

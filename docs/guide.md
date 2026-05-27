@@ -25,7 +25,8 @@ the layout containers. This guide is the reference for building UI with it.
 14. [Recipes](#14-recipes)
 15. [Limitations & rough edges](#15-limitations--rough-edges)
 16. [Edit mode (`CurveSlider`, `DesignSurface`)](#16-edit-mode-curveslider-designsurface)
-17. [Build & test](#17-build--test)
+17. [Coordinate model — intrinsic geometry vs placement](#17-coordinate-model--intrinsic-geometry-vs-placement)
+18. [Build & test](#18-build--test)
 
 ---
 
@@ -111,6 +112,14 @@ Three layers, strictly bottom-up. **Layers 1 and 2 never import tokens.**
 | tokens | `src/tokens/` | Design tokens — consumed at Layer 3 only. |
 
 Most apps consume Layer 3 + tokens. Layers 1 and 2 are escape hatches.
+
+Cutting through every layer is one discipline that's not enforced by types
+but shows up in every code review: **intrinsic geometry stays separable
+from viewport placement.** A shape, a curve, a sub-tree's whole layout
+should be defined in its own local frame; the SVG-viewBox coordinates
+where it ends up sitting belong in ONE outer `<g transform>` (or layout
+primitive) at the call site. See [§17 Coordinate model](#17-coordinate-model--intrinsic-geometry-vs-placement)
+for the full rule and the patterns.
 
 ---
 
@@ -1048,7 +1057,89 @@ component), see [`edit-mode.md`](./edit-mode.md).
 
 ---
 
-## 17. Build & test
+## 17. Coordinate model — intrinsic geometry vs placement
+
+VectorUI uses two related but distinct coordinate splits. §1 covered the
+first: **layout units vs CSS pixels** — `scale` reconciles them. This
+section is about the second: **a shape's own local frame vs the
+viewBox where it ends up sitting.**
+
+The rule is simple, and Frame already enforces it for shapes:
+
+> A shape generator, a curve, a sub-tree's geometry should be defined in
+> its OWN local frame, anchored at a natural origin (top-left of its
+> bbox, the center of an arc, the midpoint of a wave). The viewBox-
+> relative placement happens in ONE outer wrapper at the call site —
+> usually a `<g transform="translate(…)">` or a Frame slot.
+
+### Why it matters
+
+If the shape carries its placement, you can't swap shapes without
+re-doing the placement math, and the geometry never composes. Demo 3 had
+three curve variants — sine, square, straight — all defined with
+`yMid: HEIGHT_B / 2`. When the viewBox auto-shrunk to fit the straight
+line (which has no amplitude), `yMid` ended up near the bottom of the
+viewBox instead of its middle, and the curve appeared to move when the
+user swapped variants. The fix wasn't to clamp the viewBox; it was to
+define each curve at local `y = 0` and place the whole layer with one
+`<g transform="translate(MARGIN_X, HEIGHT_B/2)">` outside. Swap curves →
+the centerline doesn't move.
+
+### The pattern, in code
+
+```tsx
+// 1. INTRINSIC: shape/curve defined at the local origin, no viewBox refs.
+const curve = arc({ cx: 0, cy: 0, radius: R, startAngle, endAngle });
+
+// 2. PLACEMENT: one outer wrapper does the SVG-frame translate.
+<VectorUIRoot width={W} height={H}>
+  <g transform={`translate(${HUB_X} ${HUB_Y})`}>
+    <path d={curve.toPathData()} />
+    <PathFlow curve={curve}>{children}</PathFlow>
+    {/* anything else that shares the curve's frame */}
+  </g>
+</VectorUIRoot>
+```
+
+### Frame is already the canonical example
+
+`<Frame shape={…}>` already works exactly this way: the `ShapeGenerator`
+is called with `(w, h)` and produces a path at `(0, 0)..(w, h)`; Frame
+wraps it in a translate that sits the shape inside whichever Flow / slot
+asked for it. Reuse that mental model when authoring curves or shapes
+of your own.
+
+### When you must use absolute coordinates
+
+You sometimes do — Card slots are absolute relative to the Frame, ticks
+on a clock face are absolute relative to the dial. The rule isn't "no
+absolute coords ever"; it's "no MIXED-frame coords inside one
+definition." A clock's hour ticks at absolute `(r·cos a, r·sin a)` are
+fine — they're absolute IN THE DIAL'S LOCAL FRAME (origin at the dial
+center). The dial then gets placed once via `<g transform="translate(CX,
+CY)">`. Demo 7C is the worked example.
+
+### Interaction (pointer events)
+
+`CurveSlider` (and any future interactive primitive on a curve) uses
+`getScreenCTM` on its own root group to invert pointer events back into
+its local frame. Wrapping it in a `<g transform>` placement just works —
+the cursor and the curve stay in lockstep through any ancestor
+transform. (`src/components/CurveSlider.tsx` line 116 if you need to
+verify.)
+
+### Two coordinate splits, summarized
+
+| Split | What changes | Reconciler |
+|-------|--------------|------------|
+| Layout units vs CSS pixels (§1) | The visual scale of the surface | `useCoordinateScale().scale`, applied by the library |
+| Local frame vs viewBox (§17) | Where a shape sits in the SVG | A `<g transform>` (or Frame slot) at the call site |
+
+They're orthogonal. Both apply at once.
+
+---
+
+## 18. Build & test
 
 ```bash
 npm run dev      # dev server at http://localhost:5181
