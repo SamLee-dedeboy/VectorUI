@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { VectorUIRoot } from "../../../components/VectorUIRoot";
 import { Card } from "../../../components/Card";
-import { Flow } from "../../../components/Flow";
 import { scoopCard } from "../../../shapes";
 import { useTween } from "../../../layout/tween";
 import { tokens } from "../../../tokens";
@@ -83,22 +82,15 @@ export function ShapePropScene() {
         {deep ? "Shallow scoop" : "Deepen the scoop"}
       </button>
       <VectorUIRoot
-        width={ROOT_W}
-        height="content"
+        padding={MARGIN}
         style={{ maxWidth: ROOT_W, background: tokens.color.surfaceSunken }}
       >
-        <Flow
-          padding={MARGIN}
-          align="center"
-          crossSize={ROOT_W - MARGIN * 2}
-        >
-          <Card
-            shape={shape}
-            width={CARD_W}
-            title="Text follows the path"
-            body={BODY}
-          />
-        </Flow>
+        <Card
+          shape={shape}
+          width={CARD_W}
+          title="Text follows the path"
+          body={BODY}
+        />
       </VectorUIRoot>
     </>
   );

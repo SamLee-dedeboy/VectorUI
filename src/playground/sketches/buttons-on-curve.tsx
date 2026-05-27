@@ -22,13 +22,11 @@ export default function ButtonsOnCurve() {
 
   return (
     <VectorUIRoot
-      width={400}
-      height={260}
       style={{
         border: `1px solid ${tokens.color.line}`,
         background: tokens.color.surface,
         borderRadius: 12,
-        maxWidth: 480,
+        padding: 12,
       }}
     >
       <PathFlow curve={curve} gap={14} padding={8} orient="upright">
