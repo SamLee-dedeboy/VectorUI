@@ -1,7 +1,7 @@
 /**
  * Layer 2 — wrap text around a rectangular float, the way CSS `float` works.
  *
- * Demo 8 introduced an inline wrap-around-rect operator: if a text column's
+ * Demo 9 introduced an inline wrap-around-rect operator: if a text column's
  * left half is occupied by a rectangle, body text indents past the rect's
  * right edge; mirror for the right. That logic generalises — every overlay,
  * call-out, or pinned image is a rectangle once it's measured — so it lives

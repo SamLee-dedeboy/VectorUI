@@ -288,7 +288,7 @@ function pathsStructurallyMatch(a: ParsedPath, b: ParsedPath): boolean {
 /**
  * Tween an SVG path-d string. Endpoints must tokenize identically (same
  * command letters in the same positions) — use a single shape generator on
- * both sides to guarantee this, as Demo 4's `card()` family does.
+ * both sides to guarantee this, as Demo 7's `card()` family does.
  *
  * The target's tokenization is memoized once per target change; the per-frame
  * work is a tight numeric lerp + a join. This is the key perf advantage over

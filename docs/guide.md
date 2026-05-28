@@ -489,7 +489,7 @@ import { Card, tokens } from "vectorui";
 ```
 
 `Card` knows nothing about any specific shape family — pass `tokens.shapes.blob`,
-`scoopCard(...).path`, or your own `(w, h) => "M…"`. The Demo 9 Scene C
+`scoopCard(...).path`, or your own `(w, h) => "M…"`. The Demo 6 Scene C
 "morphing scoop card" works because `scoopCard(...)` ships a `ShapeBundle`
 with a closed-form `flowAround`; the body text re-wraps the morphing contour
 at full frame rate without per-frame contour sampling.
@@ -729,7 +729,7 @@ tween every frame. A subtle but common footgun, retired once.
 When you want text to wrap a morphing shape, tween the shape's
 **parameters** — not the rendered `d` string. The parametric generator
 emits BOTH the path AND a closed-form `flowAround` each frame; Card
-consumes the bundle (§14) and skips contour sampling. Demo 9 Scene C is
+consumes the bundle (§14) and skips contour sampling. Demo 6 Scene C is
 the worked example. `useTweenedPath` is still in the kit for the (rarer)
 case where all you have is a `d` from a non-parametric source.
 
@@ -758,7 +758,7 @@ changes every frame.
 A parametric shape usually knows its intrusion **in closed form** — there
 is an analytical function for "how far does the scoop poke into a column
 at y?" When the shape ships that function as `flowAround`, Frame plugs it
-straight in and skips sampling. The Demo 9 Scene C morph runs at full 60
+straight in and skips sampling. The Demo 6 Scene C morph runs at full 60
 fps because of this.
 
 **Producing a bundle.** Pair `path` with a `flowAround` that takes the
@@ -990,7 +990,7 @@ VectorUI has no animation API. Its primitives recompute from props each
 render, so **animating reduces to driving a prop over time** and letting
 React re-render. The library ships five RAF hooks to turn that pattern into
 one line. All honor `usePrefersReducedMotion()` (snap to target, no easing,
-no RAF). See Demo 9 for the three flavors side by side.
+no RAF). See Demo 6 for the three flavors side by side.
 
 **Flavor A — animate a child's transform** (`useTween`, scalar):
 
@@ -1032,7 +1032,7 @@ function you like. `tokens.motion.duration.*` provide the standard
 durations for Layer-3 callers.
 
 **When NOT to reach for these hooks.** For *viewport-driven* shape morphs
-(the breakpoint case in Demo 4), use `breakpointMorph(width, threshold,
+(the breakpoint case in Demo 7), use `breakpointMorph(width, threshold,
 band)` + `morphPath(from, to, t)` — the viewport is the clock, no RAF
 needed. For one-shot interpolation outside a render loop, `morphPath` and
 `lerpPoints` work as pure functions.
@@ -1245,7 +1245,7 @@ absolute coords ever"; it's "no MIXED-frame coords inside one
 definition." A clock's hour ticks at absolute `(r·cos a, r·sin a)` are
 fine — they're absolute IN THE DIAL'S LOCAL FRAME (origin at the dial
 center). The dial then gets placed once via `<g transform="translate(CX,
-CY)">`. Demo 7C is the worked example.
+CY)">`. Demo 4C is the worked example.
 
 ### Interaction (pointer events)
 

@@ -3,7 +3,7 @@ import { LayoutInputScene } from "./scenes/LayoutInputScene";
 import { ShapePropScene } from "./scenes/ShapePropScene";
 
 /**
- * Demo 9 — Animation as a render-time concern.
+ * Demo 6 — Animation as a render-time concern.
  *
  * VectorUI primitives are pure functions of props. To animate, drive a prop
  * over time and let React re-render — the library ships five RAF hooks

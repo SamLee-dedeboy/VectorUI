@@ -5,7 +5,7 @@
  * start wiring more than two of them together, the same patterns repeat —
  * scoop tips that move in only one axis, gap handles that report half the
  * drag distance because they sit in the middle of the gap, linked anchors
- * that follow a leader. Demo 8 hand-wrote each one. This file lifts those
+ * that follow a leader. Demo 9 hand-wrote each one. This file lifts those
  * patterns into reusable functions so the next constraint-cascade demo
  * doesn't reinvent them.
  *
@@ -114,7 +114,7 @@ export type GapHandleSpec = {
  * "spacer") and reports the gap as the *full* distance between the leader's
  * bottom and the follower's top. Because the handle is at the midpoint,
  * dragging it by `d` pixels actually means the gap changed by `2 * d` — the
- * `*2` arithmetic Demo 8 used to spell out.
+ * `*2` arithmetic Demo 9 used to spell out.
  */
 export function makeGapHandle(
   spec: GapHandleSpec,
@@ -147,7 +147,7 @@ export type LinkSpec = {
 /**
  * Derive a follower's position from a leader plus a fixed offset. The
  * follower has no handle of its own in this mode — it moves whenever the
- * leader is dragged. Used by Demo 8's "linked" mode (body follows title).
+ * leader is dragged. Used by Demo 9's "linked" mode (body follows title).
  */
 export function followerOf(spec: LinkSpec): CurvePoint {
   const a = spec.leader();

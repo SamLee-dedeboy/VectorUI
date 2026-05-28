@@ -25,7 +25,7 @@ import { Path } from "../../svg/Path";
 import { tokens } from "../../tokens";
 
 /**
- * Demo 8 — DesignSurface + per-component edit mode.
+ * Demo 9 — DesignSurface + per-component edit mode.
  *
  * One CurveSlider, two faces. The runtime face slides a value along a curve;
  * the edit face reshapes the curve itself. Both render from the same props;

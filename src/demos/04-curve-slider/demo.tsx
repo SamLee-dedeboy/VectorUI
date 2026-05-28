@@ -12,7 +12,7 @@ import { Path } from "../../svg/Path";
 import { tokens } from "../../tokens";
 
 /**
- * Demo 7 — CurveSlider: a value selector whose track *is* the function.
+ * Demo 4 — CurveSlider: a value selector whose track *is* the function.
  *
  * Three sub-demos, all using the same primitive, each with a different real
  * meaning carried by the curve:

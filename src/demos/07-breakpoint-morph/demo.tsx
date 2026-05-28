@@ -4,7 +4,7 @@ import { MorphCard } from "./MorphCard";
 import { banner, petal, spark } from "./shapes";
 
 /**
- * Demo 4 — breakpoint shape-morph (SPEC §11).
+ * Demo 7 — breakpoint shape-morph (SPEC §11).
  *
  * A single dark `<MorphCard>` driven by three stops — `sm`, `md`, `lg` —
  * each with a distinct shape that leans on what a single eight-quadratic

@@ -1,5 +1,5 @@
 /**
- * Demo 6 — slider state.
+ * Demo 5 — slider state.
  *
  * One object lifted to the demo page (HTML form controls outside the SVG);
  * the same shape feeds both the path generator and the text-flow intrusion.

@@ -10,7 +10,7 @@ import { tokens } from "../tokens";
  * "show your work". Pointer events are disabled so it can never intercept
  * a drag.
  *
- * The primitives mirror what Demo 8 hand-rolled: a tick at an arbitrary
+ * The primitives mirror what Demo 9 hand-rolled: a tick at an arbitrary
  * point, a vertical or horizontal alignment guide, and a measurement
  * bracket. Compose them into whatever picture the demo needs.
  */
@@ -68,7 +68,7 @@ export type EdgeTickProps = {
 };
 
 /**
- * A short tick mark at a point, optionally labelled. Used in Demo 8 to show
+ * A short tick mark at a point, optionally labelled. Used in Demo 9 to show
  * the card's auto-growing right edge.
  */
 export function EdgeTick({

@@ -12,7 +12,7 @@ import { tokens } from "../../../tokens";
  * spends it. PathFlow / Frame / Card aren't involved — this is the simplest
  * possible flavor of the recipe.
  *
- * Coordinate-system discipline (Demo 3 / guide §17): the hex is defined in
+ * Coordinate-system discipline (Demo 3 / guide §18): the hex is defined in
  * its own LOCAL frame, centered at `(0, 0)`. The viewBox is a pinned design
  * canvas whose `H` is DERIVED from the hex's max-scale extent + breathing
  * room — pinning it (rather than `height="content"`) keeps the viewBox from

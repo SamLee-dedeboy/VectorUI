@@ -7,7 +7,7 @@ import { ContouredMenu } from "./ContouredMenu";
 import { defaultState, type ProceduralState } from "./state";
 
 /**
- * Demo 6 — procedural path × live layout. Two takes on one idea.
+ * Demo 5 — procedural path × live layout. Two takes on one idea.
  *
  * Version A: sliders drive a closed-form left-edge wave; the SAME function
  * answers `Text`'s `intrusionAt`, so the paragraph wraps the exact contour

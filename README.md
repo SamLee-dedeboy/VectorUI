@@ -26,10 +26,10 @@ were passed, and all five §11 demos are live.
       (`y: { after }`) — that limitation is now fixed.
 - [x] **Step 7** — `PathFlow` + Demo 3: a radial menu; a line curve makes the
       same primitive a flex row.
-- [x] **Step 8** — path morphing + breakpoint hooks + Demo 4: a card that
+- [x] **Step 8** — path morphing + breakpoint hooks + Demo 7: a card that
       morphs blob↔rectangle as the viewport crosses 600px.
 - [x] **Step 9** — design tokens (color, space, type, motion, shapes, filters);
-      all demos refactored to consume them; Demo 5, the composed settings page.
+      all demos refactored to consume them; Demo 8, the composed settings page.
 - [x] **Step 10** — accessibility pass: ARIA passthrough on every primitive,
       decorative shapes `aria-hidden` by default, `prefers-reduced-motion`
       honored, `Frame.HTMLOverlay` slot type reserved, `hitPath` hook added.
@@ -40,12 +40,12 @@ were passed, and all five §11 demos are live.
   (curve as layout) and `<VectorButton>` (path as button). Version A passes an
   `arc()` curve plus a cog-shaped `VectorButton` hub; Version B passes a
   morphed polyline that interpolates between sine, square, and straight.
-- **Demo 5** is interactive: HTML controls drive a single composed scene so
+- **Demo 8** is interactive: HTML controls drive a single composed scene so
   the user can see the layout system respond to inputs in real time (container
   width, child count, distribute strategy, body length, footer count, inspect
   overlay).
 - **`VectorUIRoot` `width="auto"`** — opts a scene out of uniform scaling so it
-  reflows to the real width (`scale` stays 1) instead of shrinking. Demo 5
+  reflows to the real width (`scale` stays 1) instead of shrinking. Demo 8
   uses it; combined with a `resize: horizontal` wrapper it doubles as the
   demo's container-query mechanic.
 - **Unified measurement** — `useMeasuredBounds` (`getBBox`) is the one
@@ -104,13 +104,13 @@ geometry as the live UI.
   scoped surface — one declaration, two rendering routes. The runtime UI
   slides a value along the curve; edit mode reshapes the curve. Same
   geometry, two semantics.
-- **Demos 7 & 8** are the worked examples — `#/07-curve-slider` (runtime),
-  `#/08-design-surface` (edit). See [guide.md §14](./docs/guide.md) for the
+- **Demos 4 & 9** are the worked examples — `#/04-curve-slider` (runtime),
+  `#/09-design-surface` (edit). See [guide.md §17](./docs/guide.md) for the
   protocol and authoring notes.
 - **Animation kit** (`useTween`, `useTweenedNumbers`, `useTweenedPoints`,
   `useTweenedPath`, `useStaggeredReveal` + `easings`) names the pattern the
   demos had already been using — drive a prop over time, let the library
-  re-render. **Demo 9** shows the three flavors side by side (animate a
+  re-render. **Demo 6** shows the three flavors side by side (animate a
   child transform, a layout input, a primitive's `shape` prop). Four
   demo-local RAF hooks consolidated into one Layer-2 module.
 - **`ShapeBundle` + `ShapeProp`** — a small contract upgrade for
@@ -121,7 +121,7 @@ geometry as the live UI.
   instead of crawling through path-walks per band per frame.
   `scoopCard(...)` now returns a bundle; pass it straight to `<Card
   shape={scoopCard(...)}>`. See
-  [guide.md §12 Animation](./docs/guide.md).
+  [guide.md §13 Animation](./docs/guide.md).
 
 Deliberately out of scope this phase: editing arbitrary `<path d="…">`
 strings, round-tripping edits to source, multi-select / snap / undo, and an
@@ -152,7 +152,7 @@ Three layers (SPEC §4), strictly bottom-up — Layer 1 and 2 never import token
 |------|------|------|
 | 1 — render primitives | `src/svg/` | Thin SVG wrappers: `Group`, `Path`, `TextLine`. |
 | 2 — layout engine | `src/layout/` | Pure functions + hooks: coordinate scale, pretext text measurement, flow-around, arc-length curves, path morphing, breakpoints, rendered-bounds measurement, flow placement. |
-| 3 — components | `src/components/` | `VectorUIRoot`, `Text`, `Frame`, `Card`, `PathFlow`, `Flow`, `Pill`, `VectorButton`, `CurveSlider`, `DesignSurface`, `TokenDefs`. |
+| 3 — components | `src/components/` | `VectorUIRoot`, `Text`, `Frame`, `Card`, `LandscapeCard`, `Flow`, `PathFlow`, `Pill`, `VectorButton`, `WrapText`, `Float`, `CurveSlider`, `DesignSurface`, `TokenDefs`. |
 | tokens | `src/tokens/` | Design tokens — consumed at Layer 3 only. |
 
 Demos live in `src/demos/` (see [its README](src/demos/README.md)), one route

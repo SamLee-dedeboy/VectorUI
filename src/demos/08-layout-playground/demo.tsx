@@ -6,7 +6,7 @@ import { Playground, type FrameLayoutSize } from "./Playground";
 import { defaultState, type PlaygroundState } from "./state";
 
 /**
- * Demo 5 — Layout playground (SPEC §11).
+ * Demo 8 — Layout playground (SPEC §11).
  *
  * One composed scene whose inputs are wired to HTML controls. Every knob
  * targets exactly one layout-system capability:
@@ -21,7 +21,7 @@ import { defaultState, type PlaygroundState } from "./state";
  *  - footer ±          →  `Flow` re-flowing on dynamic content change
  *  - inspect           →  overlay showing slot rects, curves, intrusion
  *
- * Counterpart to Demo 1 (impossible-in-HTML text flow) and Demo 4
+ * Counterpart to Demo 1 (impossible-in-HTML text flow) and Demo 7
  * (impossible-in-HTML shape morphing): here the headline is that the entire
  * surface is *one* layout system the consumer drives with declarative props.
  */

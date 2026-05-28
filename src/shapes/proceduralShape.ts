@@ -27,7 +27,7 @@ export type ProceduralShapeOptions = {
    * Reference height used to compute the wave's angular frequency. Decoupling
    * the wavelength from the auto-derived frame height prevents a feedback
    * loop (text wraps → height changes → wavelength would shift → wrap would
-   * change → …). The default (320) matches Demo 6's tuning; expose it as a
+   * change → …). The default (320) matches Demo 5's tuning; expose it as a
    * prop if you're pouring text through a shape much taller or shorter and
    * the per-frame wavelength visibly changes character.
    */

@@ -3,7 +3,7 @@
  * eight-quadratic path — per-corner radii AND per-edge bow control.
  *
  * They live in this demo (not in `tokens/shapes.ts`) because they're tuned for
- * Demo 4's "shapes that morph between breakpoints" narrative. Every generator
+ * Demo 7's "shapes that morph between breakpoints" narrative. Every generator
  * emits the same M + 8×Q + Z token sequence as `tokens.shapes.quad`, so
  * outputs from this file morph cleanly against each other AND against the
  * design-token shape family.

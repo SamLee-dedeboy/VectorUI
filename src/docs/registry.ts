@@ -28,7 +28,7 @@ export const DOCS: DocMeta[] = [
     id: "edit-mode",
     title: "Edit mode",
     blurb:
-      "The `useEditHandle` + `<DesignSurface>` protocol that powers Demo 8 — how a component declares draggable points and what an aggregating surface does with them.",
+      "The `useEditHandle` + `<DesignSurface>` protocol that powers Demo 9 — how a component declares draggable points and what an aggregating surface does with them.",
     source: "docs/edit-mode.md",
   },
   {

@@ -5,12 +5,12 @@ import type { ComponentType } from "react";
 import { Demo as TextFlowDemo } from "./01-text-flow/demo";
 import { Demo as CardDemo } from "./02-card/demo";
 import { Demo as RadialMenuDemo } from "./03-radial-menu/demo";
-import { Demo as BreakpointMorphDemo } from "./04-breakpoint-morph/demo";
-import { Demo as LayoutPlaygroundDemo } from "./05-layout-playground/demo";
-import { Demo as ProceduralPathDemo } from "./06-procedural-path/demo";
-import { Demo as CurveSliderDemo } from "./07-curve-slider/demo";
-import { Demo as DesignSurfaceDemo } from "./08-design-surface/demo";
-import { Demo as AnimationDemo } from "./09-animation/demo";
+import { Demo as CurveSliderDemo } from "./04-curve-slider/demo";
+import { Demo as ProceduralPathDemo } from "./05-procedural-path/demo";
+import { Demo as AnimationDemo } from "./06-animation/demo";
+import { Demo as BreakpointMorphDemo } from "./07-breakpoint-morph/demo";
+import { Demo as LayoutPlaygroundDemo } from "./08-layout-playground/demo";
+import { Demo as DesignSurfaceDemo } from "./09-design-surface/demo";
 import { Demo as PlaygroundDemo } from "../playground/demo";
 
 // Demo source, imported verbatim via Vite's `?raw` so each demo page can show
@@ -31,28 +31,28 @@ import vectorButtonSrc from "../components/VectorButton.tsx?raw";
 import radialChromeSrc from "./03-radial-menu/chrome.ts?raw";
 import iconSrc from "./03-radial-menu/Icon.tsx?raw";
 import radialCurvesSrc from "./03-radial-menu/curves.ts?raw";
-import breakpointMorphDemoSrc from "./04-breakpoint-morph/demo.tsx?raw";
-import morphCardSrc from "./04-breakpoint-morph/MorphCard.tsx?raw";
-import morphShapesSrc from "./04-breakpoint-morph/shapes.ts?raw";
-import layoutPlaygroundDemoSrc from "./05-layout-playground/demo.tsx?raw";
-import layoutPlaygroundSceneSrc from "./05-layout-playground/Playground.tsx?raw";
-import layoutPlaygroundControlsSrc from "./05-layout-playground/Controls.tsx?raw";
-import layoutPlaygroundInspectSrc from "./05-layout-playground/InspectOverlay.tsx?raw";
-import layoutPlaygroundAccentSrc from "../shapes/accent.ts?raw";
-import layoutPlaygroundStateSrc from "./05-layout-playground/state.ts?raw";
-import proceduralDemoSrc from "./06-procedural-path/demo.tsx?raw";
-import proceduralPathSrc from "./06-procedural-path/ProceduralPath.tsx?raw";
+import curveSliderDemoSrc from "./04-curve-slider/demo.tsx?raw";
+import proceduralDemoSrc from "./05-procedural-path/demo.tsx?raw";
+import proceduralPathSrc from "./05-procedural-path/ProceduralPath.tsx?raw";
 import proceduralShapeSrc from "../shapes/proceduralShape.ts?raw";
-import proceduralControlsSrc from "./06-procedural-path/Controls.tsx?raw";
-import proceduralStateSrc from "./06-procedural-path/state.ts?raw";
-import contouredMenuSrc from "./06-procedural-path/ContouredMenu.tsx?raw";
+import proceduralControlsSrc from "./05-procedural-path/Controls.tsx?raw";
+import proceduralStateSrc from "./05-procedural-path/state.ts?raw";
+import contouredMenuSrc from "./05-procedural-path/ContouredMenu.tsx?raw";
 import menuShapeSrc from "../shapes/menuShape.ts?raw";
-import curveSliderDemoSrc from "./07-curve-slider/demo.tsx?raw";
-import designSurfaceDemoSrc from "./08-design-surface/demo.tsx?raw";
-import animationDemoSrc from "./09-animation/demo.tsx?raw";
-import animationTransformSrc from "./09-animation/scenes/TransformScene.tsx?raw";
-import animationLayoutSrc from "./09-animation/scenes/LayoutInputScene.tsx?raw";
-import animationShapeSrc from "./09-animation/scenes/ShapePropScene.tsx?raw";
+import animationDemoSrc from "./06-animation/demo.tsx?raw";
+import animationTransformSrc from "./06-animation/scenes/TransformScene.tsx?raw";
+import animationLayoutSrc from "./06-animation/scenes/LayoutInputScene.tsx?raw";
+import animationShapeSrc from "./06-animation/scenes/ShapePropScene.tsx?raw";
+import breakpointMorphDemoSrc from "./07-breakpoint-morph/demo.tsx?raw";
+import morphCardSrc from "./07-breakpoint-morph/MorphCard.tsx?raw";
+import morphShapesSrc from "./07-breakpoint-morph/shapes.ts?raw";
+import layoutPlaygroundDemoSrc from "./08-layout-playground/demo.tsx?raw";
+import layoutPlaygroundSceneSrc from "./08-layout-playground/Playground.tsx?raw";
+import layoutPlaygroundControlsSrc from "./08-layout-playground/Controls.tsx?raw";
+import layoutPlaygroundInspectSrc from "./08-layout-playground/InspectOverlay.tsx?raw";
+import layoutPlaygroundAccentSrc from "../shapes/accent.ts?raw";
+import layoutPlaygroundStateSrc from "./08-layout-playground/state.ts?raw";
+import designSurfaceDemoSrc from "./09-design-surface/demo.tsx?raw";
 import frameSrc from "../components/Frame.tsx?raw";
 import tweenSrc from "../layout/tween.ts?raw";
 import easingsSrc from "../layout/easings.ts?raw";
@@ -72,11 +72,12 @@ export type DemoEntry = {
 };
 
 /**
- * Demo navigation order. The numeric prefix in each title is a stable
- * identifier (folder = `0N-…`, route id = `0N-…`); the *display* order is the
- * order of this array. The two diverge intentionally: the array groups demos
- * by what they teach (core components → first-principles → animation →
- * responsive → composition → editing), not by the order they were authored.
+ * Demo navigation order. The numeric prefix in each title matches the
+ * `0N-…` folder / route id; the array order grouped them by what they
+ * teach (core components → first-principles input → animation →
+ * responsive → composition → editing). When the order was refreshed,
+ * the demos were renumbered together so route id, title prefix, and
+ * display position all agree.
  */
 export const DEMOS: DemoEntry[] = [
   {
@@ -131,8 +132,8 @@ export const DEMOS: DemoEntry[] = [
     ],
   },
   {
-    id: "07-curve-slider",
-    title: "7 · CurveSlider — the curve is the function",
+    id: "04-curve-slider",
+    title: "4 · CurveSlider — the curve is the function",
     blurb:
       "One slider, three carriers: a volume cusp with +/− buttons (fine control at the sweet spot), a hike elevation profile (the curve is the trail), and a full-circle clock face. The curve always is what the value means.",
     proves:
@@ -141,8 +142,8 @@ export const DEMOS: DemoEntry[] = [
     sources: [{ name: "demo.tsx", code: curveSliderDemoSrc }],
   },
   {
-    id: "06-procedural-path",
-    title: "6 · Procedural path with live reflow",
+    id: "05-procedural-path",
+    title: "5 · Procedural path with live reflow",
     blurb:
       "Version A: sliders drive a closed-form left-edge wave; text wraps the exact contour the path draws. Version B: a vertical menu whose silhouette shelves to each item's measured width — click to activate and watch the outline morph.",
     proves:
@@ -160,8 +161,8 @@ export const DEMOS: DemoEntry[] = [
     ],
   },
   {
-    id: "09-animation",
-    title: "9 · Animation — drive a prop over time",
+    id: "06-animation",
+    title: "6 · Animation — drive a prop over time",
     blurb:
       "Three sub-scenes, one recipe. A child's transform, a layout input, and a shape prop — all animated by the same five-hook kit (useTween, useTweenedNumbers, useTweenedPoints, useTweenedPath, useStaggeredReveal).",
     proves:
@@ -186,8 +187,8 @@ export const DEMOS: DemoEntry[] = [
     ],
   },
   {
-    id: "04-breakpoint-morph",
-    title: "4 · Breakpoint shape-morph",
+    id: "07-breakpoint-morph",
+    title: "7 · Breakpoint shape-morph",
     blurb:
       "A dark card with three stops — spark · petal · banner — that morphs through every breakpoint.",
     proves:
@@ -200,8 +201,8 @@ export const DEMOS: DemoEntry[] = [
     ],
   },
   {
-    id: "05-layout-playground",
-    title: "5 · Layout playground",
+    id: "08-layout-playground",
+    title: "8 · Layout playground",
     blurb:
       "One composed surface, six knobs. Every input targets a single layout-system capability — drag the slider to drive container-query reflow, cycle the distribute strategy, watch the Frame shrink-wrap.",
     proves:
@@ -217,8 +218,8 @@ export const DEMOS: DemoEntry[] = [
     ],
   },
   {
-    id: "08-design-surface",
-    title: "8 · DesignSurface — direct manipulation",
+    id: "09-design-surface",
+    title: "9 · DesignSurface — direct manipulation",
     blurb:
       "Drag handles that pass through the layout system, not around it. A and B reshape a CurveSlider's transfer function; C cascades scoop → text rewrap → slot height → Frame auto-height, with a linked-vs-free title/body toggle, an editable gap, width auto-expand, and constraint visualization.",
     proves:

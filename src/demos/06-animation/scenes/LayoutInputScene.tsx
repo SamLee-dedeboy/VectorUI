@@ -16,7 +16,7 @@ import { tokens } from "../../../tokens";
  * the vertex array; `polyline()` wraps it as a Curve. No per-chip animation
  * code anywhere.
  *
- * Coordinate-system discipline (Demo 3 / guide §17): both source curves
+ * Coordinate-system discipline (Demo 3 / guide §18): both source curves
  * are defined in a LOCAL frame — line at `y = 0`, and the arc's chord also
  * at `y = 0` (so the arc bulges purely upward into −y, no endpoint dip).
  * The viewBox is a pinned design canvas whose `H` is DERIVED from the

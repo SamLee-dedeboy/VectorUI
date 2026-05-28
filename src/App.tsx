@@ -127,10 +127,10 @@ function DemoIndex() {
             </a>
             ,{" "}
             <a
-              href="#/07-curve-slider"
-              onClick={() => navigate("07-curve-slider")}
+              href="#/04-curve-slider"
+              onClick={() => navigate("04-curve-slider")}
             >
-              demo 7
+              demo 4
             </a>
             ).
           </li>
@@ -138,10 +138,10 @@ function DemoIndex() {
             <strong>Path morphing across breakpoints.</strong> Shapes
             cross-fade instead of binary swap (
             <a
-              href="#/04-breakpoint-morph"
-              onClick={() => navigate("04-breakpoint-morph")}
+              href="#/07-breakpoint-morph"
+              onClick={() => navigate("07-breakpoint-morph")}
             >
-              demo 4
+              demo 7
             </a>
             ).
           </li>
@@ -150,10 +150,10 @@ function DemoIndex() {
             shape parameters and slot anchors; the edit UI and the runtime UI
             share geometry (
             <a
-              href="#/08-design-surface"
-              onClick={() => navigate("08-design-surface")}
+              href="#/09-design-surface"
+              onClick={() => navigate("09-design-surface")}
             >
-              demo 8
+              demo 9
             </a>
             ).
           </li>

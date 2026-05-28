@@ -14,7 +14,7 @@ import type { TextStyle } from "../tokens";
  * A `<Float>` can also carry a string child — that text fills the float's
  * interior contour (via shape-fit on the same path), so the float becomes a
  * "shape with text inside" that the surrounding body still wraps around. See
- * the guide §12 "Text wrapping a shape".
+ * the guide §15 "Text wrapping a shape".
  */
 
 export type FloatSide = "left" | "right";
