@@ -135,6 +135,29 @@ function DemoIndex() {
             ).
           </li>
           <li>
+            <strong>Geometry and layout from one source.</strong> A
+            procedural shape's parameters drive its silhouette AND the
+            contour text wraps to — slide a knob, both update in lockstep,
+            no per-frame contour sampling (
+            <a
+              href="#/05-procedural-path"
+              onClick={() => navigate("05-procedural-path")}
+            >
+              demo 5
+            </a>
+            ).
+          </li>
+          <li>
+            <strong>Animation as a render-time concern.</strong> Components
+            are pure functions of props, so animating reduces to driving a
+            prop over time and re-rendering. No animation API, no DOM
+            mutation — just RAF hooks (
+            <a href="#/06-animation" onClick={() => navigate("06-animation")}>
+              demo 6
+            </a>
+            ).
+          </li>
+          <li>
             <strong>Path morphing across breakpoints.</strong> Shapes
             cross-fade instead of binary swap (
             <a
@@ -142,6 +165,20 @@ function DemoIndex() {
               onClick={() => navigate("07-breakpoint-morph")}
             >
               demo 7
+            </a>
+            ).
+          </li>
+          <li>
+            <strong>Container queries that reflow, not shrink.</strong> One
+            knob drives <code>Flow</code> distribute, <code>Frame</code>
+            shrink-wrap, and <code>PathFlow</code> distribution side by side
+            — the layout system reacting to its container, not uniformly
+            scaling (
+            <a
+              href="#/08-layout-playground"
+              onClick={() => navigate("08-layout-playground")}
+            >
+              demo 8
             </a>
             ).
           </li>
