@@ -71,14 +71,21 @@ export type DemoEntry = {
   sources?: SourceFile[];
 };
 
-/** Demos that exist today. */
+/**
+ * Demo navigation order. The numeric prefix in each title is a stable
+ * identifier (folder = `0N-…`, route id = `0N-…`); the *display* order is the
+ * order of this array. The two diverge intentionally: the array groups demos
+ * by what they teach (core components → first-principles → animation →
+ * responsive → composition → editing), not by the order they were authored.
+ */
 export const DEMOS: DemoEntry[] = [
   {
     id: "01-text-flow",
     title: "1 · Text flow around a shape",
     blurb:
       "Body text wrapping a corner blob, then poured through a hand-drawn archway — wrapped on both sides.",
-    proves: "Step 4: pretext flow-around, variable-width line layout.",
+    proves:
+      "WrapText + Float as the high-level answer to flow-around: one path declaration drives BOTH the drawn silhouette and the contour the text hugs (cornerBlob's left-side intrusion; archFloat's two-sided intrusion). Variable-width line layout against analytical intrusionAt / occupancyAt profiles.",
     Component: TextFlowDemo,
     sources: [
       { name: "demo.tsx", code: textFlowDemoSrc },
@@ -124,34 +131,14 @@ export const DEMOS: DemoEntry[] = [
     ],
   },
   {
-    id: "04-breakpoint-morph",
-    title: "4 · Breakpoint shape-morph",
+    id: "07-curve-slider",
+    title: "7 · CurveSlider — the curve is the function",
     blurb:
-      "A dark card with three stops — spark · petal · banner — that morphs through every breakpoint.",
-    proves: "Step 8: breakpoint system, path morphing, ResizeObserver wiring.",
-    Component: BreakpointMorphDemo,
-    sources: [
-      { name: "demo.tsx", code: breakpointMorphDemoSrc },
-      { name: "MorphCard.tsx", code: morphCardSrc },
-      { name: "shapes.ts", code: morphShapesSrc },
-    ],
-  },
-  {
-    id: "05-layout-playground",
-    title: "5 · Layout playground",
-    blurb:
-      "One composed surface, six knobs. Every input targets a single layout-system capability — drag the slider to drive container-query reflow, cycle the distribute strategy, watch the Frame shrink-wrap.",
+      "One slider, three carriers: a volume cusp with +/− buttons (fine control at the sweet spot), a hike elevation profile (the curve is the trail), and a full-circle clock face. The curve always is what the value means.",
     proves:
-      "Step 9: every primitive composed live; container queries; Frame shrink-wrap; PathFlow distribute strategies; dynamic Flow.",
-    Component: LayoutPlaygroundDemo,
-    sources: [
-      { name: "demo.tsx", code: layoutPlaygroundDemoSrc },
-      { name: "Playground.tsx", code: layoutPlaygroundSceneSrc },
-      { name: "Controls.tsx", code: layoutPlaygroundControlsSrc },
-      { name: "InspectOverlay.tsx", code: layoutPlaygroundInspectSrc },
-      { name: "accent.ts", code: layoutPlaygroundAccentSrc },
-      { name: "state.ts", code: layoutPlaygroundStateSrc },
-    ],
+      "First-principles input: CurveSlider where the track IS the transfer function. nearestPointOnCurve + pointAt do the parameterisation; pointer, keyboard, and reduced-motion are wired once.",
+    Component: CurveSliderDemo,
+    sources: [{ name: "demo.tsx", code: curveSliderDemoSrc }],
   },
   {
     id: "06-procedural-path",
@@ -171,26 +158,6 @@ export const DEMOS: DemoEntry[] = [
       { name: "Controls.tsx", code: proceduralControlsSrc },
       { name: "state.ts", code: proceduralStateSrc },
     ],
-  },
-  {
-    id: "07-curve-slider",
-    title: "7 · CurveSlider — the curve is the function",
-    blurb:
-      "One slider, three carriers: a volume cusp with +/− buttons (fine control at the sweet spot), a hike elevation profile (the curve is the trail), and a full-circle clock face. The curve always is what the value means.",
-    proves:
-      "Phase 3 — first-principles components. CurveSlider + nearestPointOnCurve / pointAt; pointer + keyboard + reduced-motion-aware.",
-    Component: CurveSliderDemo,
-    sources: [{ name: "demo.tsx", code: curveSliderDemoSrc }],
-  },
-  {
-    id: "08-design-surface",
-    title: "8 · DesignSurface — direct manipulation",
-    blurb:
-      "Drag handles that pass through the layout system, not around it. A and B reshape a CurveSlider's transfer function; C cascades scoop → text rewrap → slot height → Frame auto-height, with a linked-vs-free title/body toggle, an editable gap, width auto-expand, and constraint visualization.",
-    proves:
-      "Phase 3 — direct-manipulation authoring. useEditHandle protocol; DesignSurface aggregation; per-component edit-mode sugar; constraint-respecting drags.",
-    Component: DesignSurfaceDemo,
-    sources: [{ name: "demo.tsx", code: designSurfaceDemoSrc }],
   },
   {
     id: "09-animation",
@@ -219,6 +186,47 @@ export const DEMOS: DemoEntry[] = [
     ],
   },
   {
+    id: "04-breakpoint-morph",
+    title: "4 · Breakpoint shape-morph",
+    blurb:
+      "A dark card with three stops — spark · petal · banner — that morphs through every breakpoint.",
+    proves:
+      "Container-query responsiveness via useViewportWidth + breakpointMorph (continuous blend across a breakpoint band), driving morphPath between same-structure d strings. The scene reflows to its container instead of uniformly scaling.",
+    Component: BreakpointMorphDemo,
+    sources: [
+      { name: "demo.tsx", code: breakpointMorphDemoSrc },
+      { name: "MorphCard.tsx", code: morphCardSrc },
+      { name: "shapes.ts", code: morphShapesSrc },
+    ],
+  },
+  {
+    id: "05-layout-playground",
+    title: "5 · Layout playground",
+    blurb:
+      "One composed surface, six knobs. Every input targets a single layout-system capability — drag the slider to drive container-query reflow, cycle the distribute strategy, watch the Frame shrink-wrap.",
+    proves:
+      "Every layout primitive composed live, knob-driven: Frame shrink-wrap (height=\"auto\"), Flow distribute (pack / space-between / space-around), PathFlow distribution along a curve, container queries via useViewportWidth, dynamic ShapeGenerator. The whole layout system in one scene.",
+    Component: LayoutPlaygroundDemo,
+    sources: [
+      { name: "demo.tsx", code: layoutPlaygroundDemoSrc },
+      { name: "Playground.tsx", code: layoutPlaygroundSceneSrc },
+      { name: "Controls.tsx", code: layoutPlaygroundControlsSrc },
+      { name: "InspectOverlay.tsx", code: layoutPlaygroundInspectSrc },
+      { name: "accent.ts", code: layoutPlaygroundAccentSrc },
+      { name: "state.ts", code: layoutPlaygroundStateSrc },
+    ],
+  },
+  {
+    id: "08-design-surface",
+    title: "8 · DesignSurface — direct manipulation",
+    blurb:
+      "Drag handles that pass through the layout system, not around it. A and B reshape a CurveSlider's transfer function; C cascades scoop → text rewrap → slot height → Frame auto-height, with a linked-vs-free title/body toggle, an editable gap, width auto-expand, and constraint visualization.",
+    proves:
+      "Direct-manipulation authoring: useEditHandle protocol; DesignSurface aggregation; per-component `edit` prop sugar; drags that respect layout constraints rather than overriding them.",
+    Component: DesignSurfaceDemo,
+    sources: [{ name: "demo.tsx", code: designSurfaceDemoSrc }],
+  },
+  {
     id: "playground",
     title: "▶ Playground",
     blurb:
@@ -230,5 +238,4 @@ export const DEMOS: DemoEntry[] = [
   },
 ];
 
-/** All five SPEC §11 demos are built; Demo 6 is the DX-probe addition. */
 export const PLANNED: DemoEntry[] = [];

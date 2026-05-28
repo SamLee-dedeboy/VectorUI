@@ -5,7 +5,7 @@ SVG**. A page is one `<svg>` document; closed paths — not `<div>` boxes — ar
 the layout containers. This guide is the reference for building UI with it.
 
 > Status: feasibility prototype. The API is small and stable enough to build
-> with, but it is not production-hardened. See [Limitations](#15-limitations--rough-edges).
+> with, but it is not production-hardened. See [Limitations](#16-limitations--rough-edges).
 
 ## Contents
 
@@ -17,16 +17,17 @@ the layout containers. This guide is the reference for building UI with it.
 6. [`Frame` — shape as container](#6-frame--shape-as-container)
 7. [`Flow` — linear layout](#7-flow--linear-layout)
 8. [`PathFlow` — layout along a curve](#8-pathflow--layout-along-a-curve)
-9. [`Pill` and the Layer-1 primitives](#9-pill-and-the-layer-1-primitives)
-10. [Design tokens](#10-design-tokens)
-11. [Hooks & layout utilities](#11-hooks--layout-utilities)
-12. [Animation — drive a prop over time](#12-animation--drive-a-prop-over-time)
-13. [`ShapeBundle` — shape-aware text wrap](#13-shapebundle--shape-aware-text-wrap)
-14. [Recipes](#14-recipes)
-15. [Limitations & rough edges](#15-limitations--rough-edges)
-16. [Edit mode (`CurveSlider`, `DesignSurface`)](#16-edit-mode-curveslider-designsurface)
-17. [Coordinate model — intrinsic geometry vs placement](#17-coordinate-model--intrinsic-geometry-vs-placement)
-18. [Build & test](#18-build--test)
+9. [`Card` and `LandscapeCard` — shape-as-card](#9-card-and-landscapecard--shape-as-card)
+10. [`Pill` and the Layer-1 primitives](#10-pill-and-the-layer-1-primitives)
+11. [Design tokens](#11-design-tokens)
+12. [Hooks & layout utilities](#12-hooks--layout-utilities)
+13. [Animation — drive a prop over time](#13-animation--drive-a-prop-over-time)
+14. [`ShapeBundle` — shape-aware text wrap](#14-shapebundle--shape-aware-text-wrap)
+15. [Recipes](#15-recipes)
+16. [Limitations & rough edges](#16-limitations--rough-edges)
+17. [Edit mode (`CurveSlider`, `DesignSurface`)](#17-edit-mode-curveslider-designsurface)
+18. [Coordinate model — intrinsic geometry vs placement](#18-coordinate-model--intrinsic-geometry-vs-placement)
+19. [Build & test](#19-build--test)
 
 ---
 
@@ -48,7 +49,7 @@ The rules of thumb:
 
 - Props named `x`, `y`, `width`, `height`, `gap`, `padding`, `maxWidth` → **layout units**.
 - `font` and `lineHeight` on `<Text>` → **CSS pixels** (so text stays readable).
-- Need a label's width in layout units? Use [`useNaturalTextWidth`](#11-hooks--layout-utilities) — it converts internally.
+- Need a label's width in layout units? Use [`useNaturalTextWidth`](#12-hooks--layout-utilities) — it converts internally.
 
 ### Sizing modes
 
@@ -61,7 +62,7 @@ The rules of thumb:
 | The scene's height is data-driven | `height="content"` |
 
 With `width="auto"`, `scale` is pinned to 1 — layout units equal pixels — and a
-layout adapts by reading [`useViewportWidth()`](#11-hooks--layout-utilities).
+layout adapts by reading [`useViewportWidth()`](#12-hooks--layout-utilities).
 `width` defaults to `"auto"` and `height` to `"content"`, so the minimal
 `<VectorUIRoot>` reflows and sizes to its content; reach for `width={<number>}`
 only when you want uniform scaling.
@@ -108,7 +109,7 @@ Three layers, strictly bottom-up. **Layers 1 and 2 never import tokens.**
 |-------|------|------|
 | 1 — render primitives | `src/svg/` | Thin SVG wrappers: `Group`, `Path`, `TextLine`. No layout logic. |
 | 2 — layout engine | `src/layout/` | Pure functions + hooks: coordinate scale, text measurement, flow placement, arc-length curves, breakpoints, path morphing. |
-| 3 — components | `src/components/` | `VectorUIRoot`, `Text`, `Frame`, `Card`, `Flow`, `PathFlow`, `Pill`, `VectorButton`, `WrapText`, `Float`, `CurveSlider`, `DesignSurface`, `TokenDefs`. |
+| 3 — components | `src/components/` | `VectorUIRoot`, `Text`, `Frame`, `Card`, `LandscapeCard`, `Flow`, `PathFlow`, `Pill`, `VectorButton`, `WrapText`, `Float`, `CurveSlider`, `DesignSurface`, `TokenDefs`. |
 | tokens | `src/tokens/` | Design tokens — consumed at Layer 3 only. |
 
 Most apps consume Layer 3 + tokens. Layers 1 and 2 are escape hatches.
@@ -118,7 +119,7 @@ but shows up in every code review: **intrinsic geometry stays separable
 from viewport placement.** A shape, a curve, a sub-tree's whole layout
 should be defined in its own local frame; the SVG-viewBox coordinates
 where it ends up sitting belong in ONE outer `<g transform>` (or layout
-primitive) at the call site. See [§17 Coordinate model](#17-coordinate-model--intrinsic-geometry-vs-placement)
+primitive) at the call site. See [§18 Coordinate model](#18-coordinate-model--intrinsic-geometry-vs-placement)
 for the full rule and the patterns.
 
 ---
@@ -161,7 +162,7 @@ constant size as the viewBox scales.
 
 | Prop | Type | Default | Notes |
 |------|------|---------|-------|
-| `children` | `string` | — | Plain text only (no inline markup — see [Limitations](#15-limitations--rough-edges)). |
+| `children` | `string` | — | Plain text only (no inline markup — see [Limitations](#16-limitations--rough-edges)). |
 | `font` | `string` | — | CSS font shorthand in **px**, e.g. `"600 16px Inter"`. |
 | `lineHeight` | `number` | — | Line-box height in **CSS px**. |
 | `maxWidth` | `number \| "100%"` | `"100%"` | Wrap width in layout units. Defaults to `"100%"` — like a block element, text fills its container and wraps. `"100%"` resolves to the enclosing `Flow`'s content box (inside its padding) or `Frame` slot, falling back to the viewBox edge. Pass a number to wrap at a fixed width. |
@@ -169,7 +170,7 @@ constant size as the viewBox scales.
 | `fill` | `string` | `"currentColor"` | |
 | `letterSpacing` | `number` | — | In px. |
 | `sizing` | `"screen" \| "layout"` | `"screen"` | `"layout"` reads `font`/`lineHeight` as layout units so the text scales with the viewBox (for labels inside a graphic). See below. |
-| `flowAround` | `FlowAround` | — | Wrap text around a floated shape (see [Recipes](#14-recipes)). |
+| `flowAround` | `FlowAround` | — | Wrap text around a floated shape (see [Recipes](#15-recipes)). |
 | `onMeasure` | `(size: { width, height }) => void` | — | Reports the wrapped block size in layout units. |
 
 Spread a `type` token straight in: `<Text {...tokens.type.body} maxWidth="100%">`.
@@ -190,7 +191,7 @@ edge. Supply `rightIntrusionAt` as well and the text wraps on both sides at
 once (e.g. poured through an archway).
 
 > For the common case — draw a shape *and* wrap text around it from a single
-> path string — reach for [`WrapText`/`Float`](#14-recipes) (§14). Raw
+> path string — reach for [`WrapText`/`Float`](#15-recipes) (§15). Raw
 > `flowAround` below stays the low-level escape hatch for analytical or
 > hand-tuned intrusions.
 
@@ -204,7 +205,7 @@ A `Frame` is a closed path plus **named slots**. Children render into slots via
 
 | Prop | Type | Default | Notes |
 |------|------|---------|-------|
-| `shape` | `ShapeGenerator \| ShapeBundle` | — | Path generator (`(w,h) => string`) or a bundle (`{ path, flowAround? }`). See [§13 ShapeBundle](#13-shapebundle--shape-aware-text-wrap). Use `tokens.shapes.*` for plain generators. |
+| `shape` | `ShapeGenerator \| ShapeBundle` | — | Path generator (`(w,h) => string`) or a bundle (`{ path, flowAround? }`). See [§14 ShapeBundle](#14-shapebundle--shape-aware-text-wrap). Use `tokens.shapes.*` for plain generators. |
 | `width` | `number \| "auto"` | — | Layout units, or `"auto"` to shrink-wrap to the rightmost slot edge + `padding`. |
 | `height` | `number \| "auto"` | — | Layout units, or `"auto"` to shrink-wrap to the lowest slot edge + `padding`. |
 | `slots` | `Record<string, SlotSpec>` | — | Named slot definitions (below). |
@@ -281,12 +282,15 @@ slot resolves to that slot's width.
 
 > Tip: for a column of content inside a Frame, put **one** region slot
 > containing a [`Flow`](#7-flow--linear-layout) rather than many stacked slots.
+> For card-shaped containers — body + header + actions auto-fitting the
+> contour — reach for [`Card`](#9-card-and-landscapecard--shape-as-card)
+> directly; it composes Frame's shape-fit slots into a ready-made API.
 
 ### Shape-fit slots — content auto-follows the contour
 
 A `"shape-fit"` slot makes the slot's content track the Frame's actual shape
 boundary instead of sitting in a hand-coded rectangle. It uses the
-[`occupancyFromPath`](#11-hooks--layout-utilities) sampler internally, so it
+[`occupancyFromPath`](#12-hooks--layout-utilities) sampler internally, so it
 works for **any** `shape` you pass to the Frame — no per-shape intrusion to
 wire.
 
@@ -306,14 +310,14 @@ type ShapeFitSlot = {
   /** Override shape to fit inside; defaults to the Frame's own `shape`.
    *  Lets a slot fit inside an inner feature (e.g. a triangle whose title
    *  fills it) different from the Frame's outline. Plain generator only —
-   *  the closed-form `flowAround` fast path (§13) is currently scoped to
+   *  the closed-form `flowAround` fast path (§14) is currently scoped to
    *  the Frame-level shape; override-shape slots always sample. */
   shape?: ShapeGenerator;
   padding?: number;                    // inset from the contour
 };
 ```
 
-This is what powers the library's [`Card`](#14-recipes) — body text wraps the
+This is what powers the library's [`Card`](#9-card-and-landscapecard--shape-as-card) — body text wraps the
 card's scoop or blob; actions sit in a derived safe rectangle — without the
 consumer wiring any intrusion.
 
@@ -436,7 +440,104 @@ declared by *content* — no pixel geometry to keep in sync.
 
 ---
 
-## 9. `Pill` and the Layer-1 primitives
+## 9. `Card` and `LandscapeCard` — shape-as-card
+
+`Card` and `LandscapeCard` are the library's two ready-made card components.
+Both are thin compositions over `Frame` (§6) — they give you a single-prop API
+for the common "shape-as-card with header, body, and actions" pattern, with
+the contour-following text and safe-rectangle button placement already wired
+up. Reach for `Frame` directly only when you need a layout outside what these
+express.
+
+### `Card` — header, body, actions inside any shape
+
+`Card` takes a `shape` (any `ShapeGenerator` or `ShapeBundle`) and three
+optional content props — `title`, `body`, `actions`. It builds three Frame
+shape-fit slots internally: `header` and `actions` use *safe* mode (a
+conservative inset rectangle, so a fixed-size title or button row always
+fits the shape), and `body` uses *text* mode (the paragraph reflows to the
+shape's interior contour line by line). The card shrink-wraps its height
+to fit the content unless you pin it.
+
+| Prop | Type | Default | Notes |
+|------|------|---------|-------|
+| `shape` | `ShapeGenerator \| ShapeBundle` | — | The card's outline. A plain `(w,h) => string`, or a `ShapeBundle` whose `flowAround` lets body text wrap morphing shapes at 60 fps. See [§14 ShapeBundle](#14-shapebundle--shape-aware-text-wrap). |
+| `width` | `number \| "auto"` | `340` | Layout units. |
+| `height` | `number \| "auto"` | `"auto"` | Shrink-wraps to header + body + actions when `"auto"`. |
+| `title` | `string` | — | Header text. Omit for a card with no header band. |
+| `body` | `string \| ReactNode` | — | A string is rendered as a contour-fitting `Text`. Pass a `ReactNode` (e.g. a `WrapText` with `Float`s) for custom content; nested plain `Text` still picks up the slot's `flowAround`. |
+| `actions` | `ReactNode` | — | Rigid content (typically a button row). Sits in a safe rectangle at the bottom. |
+| `padding` | `number` | `space.xl` | Inner padding around the content, layout units. |
+| `titleHeight` | `number` | `34` | Header band height. |
+| `headerGap` | `number` | `space.sm` | Gap between header and body. |
+| `bodyPadding` | `number` | `space.md` | Gap kept between body text and the shape's contour. |
+| `actionsGap` | `number` | `space.md` | Gap between body and actions. |
+| `surface`, `titleFill`, `bodyFill` | `string` | tokens | Override fills. |
+| `titleStyle`, `bodyStyle` | `TextStyle` | `type.title`, `type.body` | Override type tokens. |
+| `filter` | `string` | `filters.softShadow` | Any SVG filter ref; pass `""` to drop the shadow. |
+| …`SVGProps` | | | `role`, `aria-*`, etc. pass through. `role` defaults to `"region"`. |
+
+```tsx
+import { Card, tokens } from "vectorui";
+
+<Card
+  shape={(w, h) => tokens.shapes.rectRounded(w, h, 24)}
+  title="Settings"
+  body="Saved to your local profile. Sync happens on next sign-in."
+  actions={<Pill onClick={save}>Save</Pill>}
+/>
+```
+
+`Card` knows nothing about any specific shape family — pass `tokens.shapes.blob`,
+`scoopCard(...).path`, or your own `(w, h) => "M…"`. The Demo 9 Scene C
+"morphing scoop card" works because `scoopCard(...)` ships a `ShapeBundle`
+with a closed-form `flowAround`; the body text re-wraps the morphing contour
+at full frame rate without per-frame contour sampling.
+
+### `LandscapeCard` — card whose body wraps an inner feature shape
+
+A `Card` whose `body` slot holds a `WrapText` around a `<Float>`. The
+feature path serves three roles from one declaration: it draws the inner
+shape, publishes the wrap contour the body text avoids, AND provides the
+interior contour the title text fits inside. No bespoke slot, no per-shape
+intrusion code.
+
+| Prop | Type | Default | Notes |
+|------|------|---------|-------|
+| `outline` | `ShapeGenerator` | — | The card's outer outline. |
+| `feature` | `ShapeGenerator` | — | The inner shape — drawn as a Float, wrapped by the body, fills the title. |
+| `featureWidth`, `featureHeight` | `number` | — | Natural size of the feature, layout units. |
+| `width` | `number \| "auto"` | `420` | Layout units. |
+| `height` | `number \| "auto"` | `"auto"` | Shrink-wraps unless pinned. |
+| `padding` | `number` | *Card default* | Inner padding. |
+| `flowGap` | `number` | `4` | Gap between body text and the feature contour. |
+| `titlePadding` | `number` | `8` | Inset from the feature's slopes for the title text. |
+| `title`, `body` | `string` | — | Required. |
+| `titleStyle`, `bodyStyle` | `TextStyle` | `type.heading`, `type.body` | |
+| `surface`, `featureFill`, `titleFill`, `bodyFill` | `string` | tokens | |
+| …`SVGProps` | | | Forwarded to the underlying Card. |
+
+```tsx
+import { LandscapeCard, tokens } from "vectorui";
+
+<LandscapeCard
+  outline={(w, h) => tokens.shapes.rectRounded(w, h, 20)}
+  feature={triangleFeature}
+  featureWidth={140}
+  featureHeight={140}
+  title="Path"
+  body="Body text that wraps the triangle's silhouette on both sides…"
+/>
+```
+
+`LandscapeCard` is the canonical example of a Layer-3 composition that
+adds *no* new measurement code — just a useful default arrangement of
+the existing primitives. The legacy two-slot Frame implementation is
+preserved in `LandscapeCard.legacy.tsx` as a diff reference.
+
+---
+
+## 10. `Pill` and the Layer-1 primitives
 
 ### `Pill`
 
@@ -516,7 +617,7 @@ Thin SVG wrappers, for escape-hatch rendering:
 
 ---
 
-## 10. Design tokens
+## 11. Design tokens
 
 `import { tokens } from "vectorui"` — one object, consumed at Layer 3 only.
 
@@ -535,7 +636,7 @@ variables, not editing components.
 
 ---
 
-## 11. Hooks & layout utilities
+## 12. Hooks & layout utilities
 
 All from `"vectorui"`. Hooks must be used under a `VectorUIRoot`.
 
@@ -548,7 +649,7 @@ All from `"vectorui"`. Hooks must be used under a `VectorUIRoot`.
 | `useNaturalTextWidth(text, font)` | `number` (layout units) | Sizing a shape to a label. |
 | `useFontsReady()` | `boolean` | Re-measure when the web font loads. |
 | `usePrefersReducedMotion()` | `boolean` | Drop animations to instant. |
-| `useTween(target, opts?)` | `number` | RAF-driven scalar tween. See §12 Animation. |
+| `useTween(target, opts?)` | `number` | RAF-driven scalar tween. See §13 Animation. |
 | `useTweenedNumbers(targets, opts?)` | `number[]` | Per-index tween with optional `staggerMs`. |
 | `useTweenedPoints(target, opts?)` | `CurvePoint[]` | Tween a vertex array; feed `polyline()` to PathFlow. |
 | `useTweenedPath(target, opts?)` | `string` | Tween an SVG `d`; feed `Card`/`Frame`/`Path`. |
@@ -569,7 +670,7 @@ the `tokens.shapes.*` family does).
 
 ---
 
-## 12. Animation — drive a prop over time
+## 13. Animation — drive a prop over time
 
 VectorUI primitives are pure functions of their props, so animation reduces
 to a single recipe: **drive a prop over time, re-render**. The library ships
@@ -628,13 +729,13 @@ tween every frame. A subtle but common footgun, retired once.
 When you want text to wrap a morphing shape, tween the shape's
 **parameters** — not the rendered `d` string. The parametric generator
 emits BOTH the path AND a closed-form `flowAround` each frame; Card
-consumes the bundle (§13) and skips contour sampling. Demo 9 Scene C is
+consumes the bundle (§14) and skips contour sampling. Demo 9 Scene C is
 the worked example. `useTweenedPath` is still in the kit for the (rarer)
 case where all you have is a `d` from a non-parametric source.
 
 ---
 
-## 13. `ShapeBundle` — shape-aware text wrap
+## 14. `ShapeBundle` — shape-aware text wrap
 
 `Card.shape` and `Frame.shape` accept either a plain `ShapeGenerator`
 (`(w, h) => string`) or a `ShapeBundle`:
@@ -717,7 +818,7 @@ override shapes, so this rarely matters.
 
 ---
 
-## 14. Recipes
+## 15. Recipes
 
 ### A button
 
@@ -728,7 +829,12 @@ override shapes, so this rarely matters.
 </Pill>
 ```
 
-### A self-sizing card
+### A self-sizing card (hand-rolled from Frame)
+
+For most cards reach for [`Card`](#9-card-and-landscapecard--shape-as-card) — it
+composes the shape-fit slots for you. This Frame-direct version is a
+useful reference when you need a non-card layout (a popover, a custom
+header + footer rail, an inset region) shrink-wrapped to its content.
 
 ```tsx
 <VectorUIRoot width={420} height="content">
@@ -790,18 +896,40 @@ import { WrapText, Float, tokens } from "vectorui";
 </Flow>
 ```
 
-**Placement.** A float is positioned by an `anchor` point — one of the four
-corners or `"center"` — placed at `x`/`y`. Those take a layout-unit number *or* a
-percentage: `x="50%"` is half the column width; `y="50%"` is half the **final
-block height** (resolved by a short fixed-point pass, since the height depends on
-how the text flows around the float and vice-versa — it converges in a pass or
-two because line count barely tracks a float's vertical position). `side` is a
-shorthand for the common anchors: `side="left"` → top-left at `x=0`,
-`side="right"` → top-right at `x="100%"`.
+**`<WrapText>` props**
 
-The contour is *sampled* from the path (lower precision than an analytical
-profile); pass `width`/`height` on a `<Float>` to override the sampled box for a
-pathological path.
+| Prop | Type | Default | Notes |
+|------|------|---------|-------|
+| `children` | `ReactNode` | — | `<Float>` elements and the body text, intermixed. Plain strings only — same single-string-paragraph rule as `<Text>`. |
+| `font`, `lineHeight`, `letterSpacing` | | — | Type style. Spread a `tokens.type.*` token. |
+| `fill` | `string` | — | Text fill. |
+| `maxWidth` | `number \| "100%"` | `"100%"` | Wrap width in layout units, or fill the enclosing column's content box. Keep `WrapText` in a column `Flow` / `Frame` slot so `"100%"` resolves. |
+| `x`, `y` | `number` | `0` | Top-left of the block (paths + text) in layout units. |
+| `gap` | `number` | `0` | Layout units kept between every float and the text. |
+| `sizing` | `"screen" \| "layout"` | *Text default* | Forwarded to the inner `<Text>`. |
+| `overflowWrap` | `OverflowWrap` | | Forwarded to text wrapping. |
+| `onMeasure` | `(TextMeasurement) => void` | — | Fires once the block height settles. |
+
+**`<Float>` props** *(inert outside a `WrapText` — renders nothing on its own)*
+
+| Prop | Type | Default | Notes |
+|------|------|---------|-------|
+| `d` | `string` | — | SVG path data. Drawn as-is AND sampled for the wrap contour. |
+| `side` | `"left" \| "right"` | `"left"` | Convenience anchor against a column edge. Explicit `anchor`/`x`/`y` override it. |
+| `anchor` | `"top-left" \| "top-right" \| "bottom-left" \| "bottom-right" \| "center"` | follows `side` | Which point of the float `x`/`y` position. |
+| `x`, `y` | `number \| "<n>%"` | `x` from `side`, `y=0` | Position of the `anchor` in the block. `"50%"` on `x` is half the column width; `"50%"` on `y` is half the *final* block height (resolved by a short fixed-point pass). |
+| `width`, `height` | `number` | *auto-measured* | Bounding box override; pass only for pathological paths. |
+| `fill`, `stroke`, `strokeWidth`, `filter` | `string` | — | Forwarded to the drawn `<path>`. |
+| `children` | `string` | — | Optional text rendered *inside* the float's contour via shape-fit (interior occupancy). The surrounding body still wraps around the float. |
+| `textStyle` | `TextStyle` | — | Required when `children` is set. |
+| `textFill`, `textPadding` | `string`, `number` | — | Inside-text fill and contour inset. |
+| `samples`, `yResolution`, `reachSteps` | `number` | | Forwarded to `intrusionFromPath` / `spanFromPath` for finer sampling. |
+
+**Placement.** The summary in table form: a float is anchored by its
+`anchor` point, placed at `(x, y)`. `side` is just sugar for the common
+anchors — `side="left"` → top-left at `x=0`, `side="right"` → top-right at
+`x="100%"`. The contour is *sampled* from the path; only reach for explicit
+`width`/`height` to override the sampled box on a pathological path.
 
 The lower tiers below stay available when you need an analytical intrusion or
 hand-tuned profiles — `WrapText` is built on exactly this `flowAround` API.
@@ -911,7 +1039,7 @@ needed. For one-shot interpolation outside a render loop, `morphPath` and
 
 ---
 
-## 15. Limitations & rough edges
+## 16. Limitations & rough edges
 
 Honest list — useful when assessing the API:
 
@@ -945,7 +1073,7 @@ Honest list — useful when assessing the API:
 
 ---
 
-## 16. Edit mode (`CurveSlider`, `DesignSurface`)
+## 17. Edit mode (`CurveSlider`, `DesignSurface`)
 
 Phase 3 added a small protocol for turning any VectorUI scene into a direct-
 manipulation editor — drag a point in the running UI and the prop that
@@ -1057,7 +1185,7 @@ component), see [`edit-mode.md`](./edit-mode.md).
 
 ---
 
-## 17. Coordinate model — intrinsic geometry vs placement
+## 18. Coordinate model — intrinsic geometry vs placement
 
 VectorUI uses two related but distinct coordinate splits. §1 covered the
 first: **layout units vs CSS pixels** — `scale` reconciles them. This
@@ -1133,13 +1261,13 @@ verify.)
 | Split | What changes | Reconciler |
 |-------|--------------|------------|
 | Layout units vs CSS pixels (§1) | The visual scale of the surface | `useCoordinateScale().scale`, applied by the library |
-| Local frame vs viewBox (§17) | Where a shape sits in the SVG | A `<g transform>` (or Frame slot) at the call site |
+| Local frame vs viewBox (§18) | Where a shape sits in the SVG | A `<g transform>` (or Frame slot) at the call site |
 
 They're orthogonal. Both apply at once.
 
 ---
 
-## 18. Build & test
+## 19. Build & test
 
 ```bash
 npm run dev      # dev server at http://localhost:5181

@@ -4,7 +4,7 @@ Phase 3 added a small protocol that lets any VectorUI component expose
 draggable points in layout space. The runtime UI and the editor are the
 *same* component — only the surrounding context decides whether handles
 draw. This page documents the protocol; see
-[`guide.md` §14](./guide.md#14-edit-mode-curveslider-designsurface) for the
+[`guide.md` §17](./guide.md#17-edit-mode-curveslider-designsurface) for the
 consumer-facing recipes.
 
 ## The two parts
