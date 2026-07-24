@@ -9,18 +9,13 @@ other boxes. VectorUI uses SVGs to render
 components, so that containers and layouts can be
 expressed in any shape and curve.
 
----
 
-📖 **[Developer Guide](./docs/guide.md)** — the full reference: coordinate
-model, every component, layout, tokens, hooks, recipes, limitations.
-
-> **Status: feasibility prototype.** The API is small and stable enough to
-> build with, and 148 unit tests cover the layout core — but it is not
-> production-hardened and **is not published to npm yet**. Run it from source
-> (below). Feedback and contributions are very welcome; see
-> [Contributing](#contributing).
+📖 **[Developer Guide](./docs/guide.md)**. The API is small and stable enough to build with, and 148 unit tests cover the layout core — but it is not > production-hardened and **is not published to npm yet**. Run it from source
+(below). Feedback and contributions are very welcome; see
+[Contributing](#contributing).
 
 #### ️[Try the live demo](https://samlee-dedeboy.github.io/VectorUI/) 
+
 ---
 ## Why
 
