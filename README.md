@@ -1,163 +1,215 @@
-# VectorUI
 
-A UI component model rendered entirely in SVG — shapes, not boxes, as the
-primary layout container.
+<img src="./docs/assets/thumbnail.png" alt="VectorUI — text flowing around a blob silhouette inside a rounded card, a CurveSlider whose track is the value, and a radial menu of pills placed along a downward curve" align="left" width="380">
 
-📖 **[Developer Guide](./docs/guide.md)** — the reference for building with
-VectorUI: the coordinate model, every component, layout, tokens, hooks,
-recipes, and known limitations. [SPEC.md](./SPEC.md) is the original design.
+**A React UI component model rendered entirely in SVG — shapes and curves, not boxes.**
 
-## Status — Phase 1 (feasibility prototype) complete
+Modern UI speaks a boxy language: everything
+is a box, nested in boxes, aligned to the edges of
+other boxes. VectorUI uses SVGs to render
+components, so that containers and layouts can be
+expressed in any shape and curve.
 
-Phase 1 set out to prove the four hard problems and let a human see, with their
-own eyes, whether SVG-first UI feels meaningfully different. **It does, and the
-prototype stands:** all ten SPEC §13 steps are done, both SPEC §14 risk gates
-were passed, and all five §11 demos are live.
+---
 
-- [x] **Steps 1–3** — Project setup, `VectorUIRoot` + `useCoordinateScale`,
-      the `Text` primitive (pretext-driven multi-line SVG text).
-- [x] **Risk gate** — Text fidelity vs. HTML `<p>`: prose and vertical metrics
-      match exactly; the only divergences are a sub-pixel boundary flip and a
-      deliberate long-token wrap policy.
-- [x] **Step 4** — Demo 1: text flowing around a floated blob's silhouette.
-- [x] **Steps 5–6** — `Frame` (slots, auto-height, path-as-container) + Demo 2.
-- [x] **Risk gate** — Frame API. Anchor slots originally couldn't size an
-      auto-height Frame; the slot model was redesigned with stacked slots
-      (`y: { after }`) — that limitation is now fixed.
-- [x] **Step 7** — `PathFlow` + Demo 3: a radial menu; a line curve makes the
-      same primitive a flex row.
-- [x] **Step 8** — path morphing + breakpoint hooks + Demo 7: a card that
-      morphs blob↔rectangle as the viewport crosses 600px.
-- [x] **Step 9** — design tokens (color, space, type, motion, shapes, filters);
-      all demos refactored to consume them; Demo 8, the composed settings page.
-- [x] **Step 10** — accessibility pass: ARIA passthrough on every primitive,
-      decorative shapes `aria-hidden` by default, `prefers-reduced-motion`
-      honored, `Frame.HTMLOverlay` slot type reserved, `hitPath` hook added.
+📖 **[Developer Guide](./docs/guide.md)** — the full reference: coordinate
+model, every component, layout, tokens, hooks, recipes, limitations.
 
-### Post-spec refinements
+> **Status: feasibility prototype.** The API is small and stable enough to
+> build with, and 148 unit tests cover the layout core — but it is not
+> production-hardened and **is not published to npm yet**. Run it from source
+> (below). Feedback and contributions are very welcome; see
+> [Contributing](#contributing).
 
-- **Demo 3** was later rewritten to lead with two library cores: `<PathFlow>`
-  (curve as layout) and `<VectorButton>` (path as button). Version A passes an
-  `arc()` curve plus a cog-shaped `VectorButton` hub; Version B passes a
-  morphed polyline that interpolates between sine, square, and straight.
-- **Demo 8** is interactive: HTML controls drive a single composed scene so
-  the user can see the layout system respond to inputs in real time (container
-  width, child count, distribute strategy, body length, footer count, inspect
-  overlay).
-- **`VectorUIRoot` `width="auto"`** — opts a scene out of uniform scaling so it
-  reflows to the real width (`scale` stays 1) instead of shrinking. Demo 8
-  uses it; combined with a `resize: horizontal` wrapper it doubles as the
-  demo's container-query mechanic.
-- **Unified measurement** — `useMeasuredBounds` (`getBBox`) is the one
-  rendered-bounds primitive `Frame.Slot`, `Flow` and `PathFlow` all build on,
-  so a layout always clears a child taller than expected.
+#### ️[Try the live demo](https://samlee-dedeboy.github.io/VectorUI/) 
+---
+## Why
 
-## Phase 2 — developer-experience refactor
+Rounded corners are the entire vocabulary CSS gives you for non-rectangular
+layout. Anything beyond that — a paragraph hugging a curve, a menu fanned along
+an arc, a slider whose *track* is the transfer function — is either a static
+image or an absurd hack of absolutely-positioned slivers.
 
-A DX audit of the demo (consumer) code found the friction concentrated in
-coordinate-model leaks, a measure/auto-size callback dance, and triplicated
-plumbing. Phase 2 addressed it:
+In SVG those are ordinary layout problems. VectorUI provides the missing
+engine: text measurement that respects an arbitrary intrusion profile,
+arc-length distribution along curves, shape-fit slots, path morphing across
+breakpoints, and a direct-manipulation edit protocol — all as React components
+with a coherent coordinate model.
 
-- **`Flow`** — the linear-layout primitive (replaces `Stack`): `direction`
-  (column/row), `gap`, `padding`, cross-axis `align`. Children are placed by
-  their rendered bounds, so `padding` and `align` retire the hand-computed
-  `OUTER + PAD` and `-w / 2` arithmetic.
-- **`VectorUIRoot height="content"`** — the viewBox sizes itself to the
-  rendered content, so a scene needs no `onMeasure`/`onLayout` callback and no
-  guessed fallback height.
-- **`Pill`** + **`useNaturalTextWidth`** — a label shrink-wrapped in a pill;
-  the natural-width hook returns layout units, so consumer code sizing a shape
-  to text never touches `scale`. `Button` and the settings tabs are now both
-  `Pill`.
-- **`useChildBounds`** — the shared child-bounds aggregation `Flow` and
-  `PathFlow` build on, on top of `useMeasuredBounds`.
-
-The result: across the five demos, zero `/ scale` in consumer code, zero
-guessed fallback heights, zero `onMeasure`/`onLayout` wiring.
-
-## Phase 3 — first-principles components + edit mode
-
-Phase 3 stops treating VectorUI as "an SVG-rendered version of an HTML kit"
-and starts using SVG as its own design surface — components that the medium
-makes possible, and a direct-manipulation editor that runs on the same
-geometry as the live UI.
-
-- **`CurveSlider`** — a continuous-value selector whose track *is* the
-  transfer function. Place it on any `Curve` (line, arc, quadratic Bézier,
-  polyline) and the curve's shape encodes the function — an audio taper,
-  an easing preview, a quarter-arc hour selector. Pointer XY maps to the
-  nearest point on the curve via the new `nearestPointOnCurve` /
-  `pointAt` Layer-2 exports. Keyboard, focus-as-path, `role="slider"`
-  a11y, and reduced-motion all built in.
-- **`VectorButton`** — a path-as-button core. Pass any `shape` (hexagon,
-  cog, leaf, hand-drawn blob — anything that fits in a `d` string) and the
-  outline IS the hit target and the visual surface in one. Children render
-  on top so icons / labels ride the shape. Click, hover, keyboard
-  activation (Enter/Space), focus, and `data-hovered` are wired up once;
-  consumers only supply callbacks. Demo 3 uses it for both the menu chips
-  and the cog hub.
-- **`<DesignSurface>` + `useEditHandle`** — a small protocol for direct
-  manipulation. Components declare *which* points are draggable
-  (`CurveSlider.editablePoints`, `Frame.onSlotEdit`); a surrounding
-  `<DesignSurface>` draws them in an aggregating overlay. The same
-  declarations also power a per-component `edit` prop that self-wraps in a
-  scoped surface — one declaration, two rendering routes. The runtime UI
-  slides a value along the curve; edit mode reshapes the curve. Same
-  geometry, two semantics.
-- **Demos 4 & 9** are the worked examples — `#/04-curve-slider` (runtime),
-  `#/09-design-surface` (edit). See [guide.md §17](./docs/guide.md) for the
-  protocol and authoring notes.
-- **Animation kit** (`useTween`, `useTweenedNumbers`, `useTweenedPoints`,
-  `useTweenedPath`, `useStaggeredReveal` + `easings`) names the pattern the
-  demos had already been using — drive a prop over time, let the library
-  re-render. **Demo 6** shows the three flavors side by side (animate a
-  child transform, a layout input, a primitive's `shape` prop). Four
-  demo-local RAF hooks consolidated into one Layer-2 module.
-- **`ShapeBundle` + `ShapeProp`** — a small contract upgrade for
-  `Card.shape` / `Frame.shape`. A bundle is `{ path, flowAround? }`; when
-  the optional `flowAround` is provided, shape-fit text slots consume the
-  closed-form intrusion directly and skip per-frame contour sampling. The
-  practical unlock: animated text wrap on a morphing card runs at 60 fps
-  instead of crawling through path-walks per band per frame.
-  `scoopCard(...)` now returns a bundle; pass it straight to `<Card
-  shape={scoopCard(...)}>`. See
-  [guide.md §13 Animation](./docs/guide.md).
-
-Deliberately out of scope this phase: editing arbitrary `<path d="…">`
-strings, round-tripping edits to source, multi-select / snap / undo, and an
-agent-authorability eval (revisited after more components exist).
-
-## Run
+## Quick start
 
 ```bash
+git clone https://github.com/SamLee-dedeboy/VectorUI.git
+cd VectorUI
 npm install
-npm run dev      # dev server on http://localhost:5181
-npm run build    # type-check + production build
-npm test         # vitest (layout/measurement pure functions)
+npm run dev      # http://localhost:5181
 ```
 
-Open the dev server and pick a demo. Each demo page has a **Demo / Code**
-tab — "Code" shows the exact source that produced the demo (imported verbatim
-via Vite `?raw`, highlighted), so the running result and the code that made it
-sit side by side. The **Text fidelity — risk gate** demo is the step-3
-verification: it renders the same paragraph as a native HTML `<p>` and as a
-VectorUI `<Text>` at an identical width and font, side by side and as an
-overlay.
+Open the dev server and pick a demo. Every demo page has a **Demo / Code** tab —
+"Code" shows the exact source that produced what you're looking at, imported
+verbatim, so the result and the code that made it sit side by side.
+
+### The hello world
+
+```tsx
+import { VectorUIRoot, Text, tokens } from "vectorui";
+
+<VectorUIRoot width={320} height="content">
+  <Text {...tokens.type.body} maxWidth={320} x={16} y={16} fill={tokens.color.ink}>
+    Hello from an SVG document.
+  </Text>
+</VectorUIRoot>
+```
+
+Every tree is wrapped in a `VectorUIRoot` — it emits the `<svg>` and provides
+the coordinate scale.
+
+### The one that shows the point
+
+Text flowing around a shape's real silhouette. One path declaration drives
+*both* the drawn shape and the wrap contour, so the text provably hugs the
+curve that's on screen:
+
+```tsx
+import { VectorUIRoot, WrapText, Float, tokens, cornerBlob } from "vectorui";
+
+const blob = cornerBlob({ width: 168, height: 212 });
+
+<VectorUIRoot width={760} height="content">
+  <WrapText {...tokens.type.body} gap={24} fill={tokens.color.ink}>
+    <Float d={blob.path} fill={tokens.color.accentSoft} />
+    {BODY_TEXT}
+  </WrapText>
+</VectorUIRoot>
+```
+
+> Examples import from `"vectorui"` (the public barrel, `src/index.ts`). Inside
+> this repo the demos use relative paths, since there's no published package
+> yet.
+
+## What you can build
+
+Each item is a live demo — run `npm run dev` and open the route.
+
+| | Demo | What it proves |
+|---|---|---|
+| 📝 | [`#/01-text-flow`](src/demos/01-text-flow) | **Text flows around a shape**, not a box — including *through* a concave archway, wrapped on both sides at once. |
+| 🃏 | [`#/02-card`](src/demos/02-card) | **`Card` — shape as container.** Shape-as-prop plus contour-fit slots; one `Float` drawn, wrapped around, and filled inside. |
+| 🌸 | [`#/03-radial-menu`](src/demos/03-radial-menu) | **`PathFlow` + `VectorButton`.** Curve as layout, path as button: arc-length distribution, tangent rotation, staggered fan-out. |
+| 🎚️ | [`#/04-curve-slider`](src/demos/04-curve-slider) | **`CurveSlider` — the curve *is* the function.** A volume taper, a hike elevation, a full-circle clock. Pointer, keyboard, reduced-motion. |
+| 〰️ | [`#/05-procedural-path`](src/demos/05-procedural-path) | **Procedural shapes with live reflow** — one closed-form function feeds both the silhouette and the paragraph, in lockstep, in one frame. |
+| 🎬 | [`#/06-animation`](src/demos/06-animation) | **Animation as a render-time concern** — tween a child transform, a layout input, or a `shape` prop with the same recipe. |
+| 📐 | [`#/07-breakpoint-morph`](src/demos/07-breakpoint-morph) | **Breakpoint shape-morph** — a card that blends blob↔rectangle as its container crosses a breakpoint band. |
+| 🎛️ | [`#/08-layout-playground`](src/demos/08-layout-playground) | **The whole layout system in one knob-driven scene** — shrink-wrap, distribute, container queries, dynamic shapes. |
+| ✋ | [`#/09-design-surface`](src/demos/09-design-surface) | **Direct manipulation.** Drags cascade *through* the layout (scoop → text rewrap → slot height → auto-size) instead of overriding it. |
+
+There's also a **[Playground](docs/playground.md)** (`#/playground`) — a live
+scratchpad backed by real files, editable from the browser or from your editor,
+hot-reloading either way.
+
+## The one concept to know
+
+VectorUI works in **two coordinate spaces at once**:
+
+- **Layout units** — positions, sizes, spacing, shapes, the `viewBox`. These
+  scale with the viewport.
+- **CSS pixels** — text size and stroke width. These must *not* scale
+  uniformly, or body text would shrink to nothing on a small screen.
+
+A single `scale` reconciles them and **the library applies it for you** — you
+almost never touch it. Rule of thumb: `x`, `y`, `width`, `gap`, `padding` are
+layout units; `font` and `lineHeight` are pixels. Need a label's width in
+layout units? `useNaturalTextWidth` converts internally.
+
+Full treatment in [guide §1](./docs/guide.md).
 
 ## Architecture
 
-Three layers (SPEC §4), strictly bottom-up — Layer 1 and 2 never import tokens:
+Three layers, strictly bottom-up. **Layers 1 and 2 never import tokens.**
 
 | Layer | Path | Role |
-|------|------|------|
-| 1 — render primitives | `src/svg/` | Thin SVG wrappers: `Group`, `Path`, `TextLine`. |
-| 2 — layout engine | `src/layout/` | Pure functions + hooks: coordinate scale, pretext text measurement, flow-around, arc-length curves, path morphing, breakpoints, rendered-bounds measurement, flow placement. |
-| 3 — components | `src/components/` | `VectorUIRoot`, `Text`, `Frame`, `Card`, `LandscapeCard`, `Flow`, `PathFlow`, `Pill`, `VectorButton`, `WrapText`, `Float`, `CurveSlider`, `DesignSurface`, `TokenDefs`. |
+|---|---|---|
+| 1 — render primitives | `src/svg/` | Thin SVG wrappers: `Group`, `Path`, `Circle`, `TextLine`. No layout logic. |
+| 2 — layout engine | `src/layout/` | Pure functions + hooks: coordinate scale, text measurement, flow-around, arc-length curves, path morphing, breakpoints, tweens, edit handles. |
+| 3 — components | `src/components/` | `VectorUIRoot`, `Text`, `WrapText`, `Frame`, `Card`, `LandscapeCard`, `Flow`, `PathFlow`, `Pill`, `VectorButton`, `Float`, `CurveSlider`, `DesignSurface`. |
 | tokens | `src/tokens/` | Design tokens — consumed at Layer 3 only. |
+| shape kit | `src/shapes/` | Reusable shape providers: a path plus a matching `flowAround` profile. |
 
-Demos live in `src/demos/` (see [its README](src/demos/README.md)), one route
-each via a tiny hash router (`src/router.tsx`). Pure layout/shape functions are
-unit-tested under `tests/` (`npm test`).
+Most apps consume Layer 3 + tokens; Layers 1 and 2 are escape hatches. The
+public API is the barrel at [`src/index.ts`](src/index.ts).
 
-The deferred items in SPEC §16 (Figma pipeline, full WCAG, HTML-overlay inputs,
-theming UI, performance) remain out of scope.
+## Honest limitations
+
+Useful when assessing whether this fits your project:
+
+- **One-frame settle.** Content-sizing measures rendered bounds, so layout
+  settles a frame after first paint. No visible flash, but it isn't synchronous.
+- **`Text` takes a plain string.** No inline spans, bold runs, or links within a
+  paragraph — mixed formatting means multiple `<Text>` elements.
+- **`getBBox` ignores filter ink.** Keep a little padding around shadowed shapes.
+- **Edit mode v1 is parameterised-only** — components opt in with control
+  points; editing an arbitrary user-supplied `d` string is out of scope.
+- **`Frame` slot geometry is still hand-coded** coordinates. `Flow` removes most
+  of it, but anchor/region specs are manual.
+- **Deferred:** Figma pipeline, full WCAG/keyboard nav, HTML-overlay text
+  inputs, RTL, theming UI, SSR, performance work.
+
+The full list, with detail, is [guide §16](./docs/guide.md).
+
+## Contributing
+
+Contributions are genuinely welcome — this is a prototype looking for real use,
+and the fastest way to improve it is to try building something and report where
+it fought you.
+
+**Good places to start**
+
+- **Build something and file the friction.** An issue that says "I tried to do
+  X and had to reach for `scale`/hand-computed coordinates" is the single most
+  valuable contribution.
+- **Add a shape provider** in `src/shapes/` — a path plus its matching
+  `flowAround` profile. Self-contained and unit-testable.
+- **Take a limitation from the list above.** Inline text spans and `Frame` slot
+  ergonomics are the two with the most leverage.
+- **New demo or playground sketch** — demos are the de-facto consumer code and
+  the integration tests.
+
+**Ground rules**
+
+1. **Layers 1 and 2 must not import tokens.** Tokens are Layer 3 only.
+2. **Keep intrinsic geometry separable from viewport placement** — define a
+   shape or sub-tree in its own local frame, then place it.
+3. **Don't leak the coordinate model.** If consumer code has to divide by
+   `scale`, that's a bug in the API, not in the consumer. Seal it behind an
+   ergonomic prop or hook.
+4. **Pure layout/shape functions get a unit test** under `tests/`.
+
+**Before you open a PR**
+
+```bash
+npm run build    # tsc -b + production build
+npm test         # vitest — 148 tests over the layout core
+npm run dev      # verify the affected demos in the browser
+```
+
+Read [`docs/guide.md`](./docs/guide.md) first — it's the contract the whole
+library is written against. [`CLAUDE.md`](./CLAUDE.md) is the short orientation
+version. [`SPEC.md`](./SPEC.md) is the original design document, kept for
+historical context.
+
+## Project map
+
+| Path | What |
+|---|---|
+| [`docs/guide.md`](./docs/guide.md) | The developer guide — start here. |
+| [`docs/playground.md`](./docs/playground.md) | The live-sketch playground. |
+| [`docs/edit-mode.md`](./docs/edit-mode.md) | The direct-manipulation protocol. |
+| [`src/demos/`](./src/demos) | Nine demos + [their README](./src/demos/README.md). |
+| [`tests/`](./tests) | Vitest — pure layout/shape functions. |
+| [`eval/`](./eval) | Agent-authorability harness + visual baselines. |
+
+## License
+
+No license file yet — until one is added, default copyright applies and the
+code is not licensed for reuse. If you'd like to use VectorUI, please
+[open an issue](https://github.com/SamLee-dedeboy/VectorUI/issues) and a
+license will be sorted out.
