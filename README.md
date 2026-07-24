@@ -1,5 +1,5 @@
 
-<img src="./docs/assets/thumbnail.png" alt="VectorUI — text flowing around a blob silhouette inside a rounded card, a CurveSlider whose track is the value, and a radial menu of pills placed along a downward curve" align="left" width="380">
+<img src="./docs/assets/thumbnail.png" alt="VectorUI — text flowing around a blob silhouette inside a rounded card, a CurveSlider whose track is the value, and a PathFlow menu of pills laid out along a wavy curve" align="left" width="380">
 
 **A React UI component model rendered entirely in SVG — shapes and curves, not boxes.**
 
